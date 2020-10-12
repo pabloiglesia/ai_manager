@@ -5,6 +5,7 @@
 import rospy
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
+from std_msgs.msg import Bool
 from ImageController import ImageController
 import random
 
@@ -37,8 +38,8 @@ def main():
         gather_state_info(image)
         action = rl_algorithm()
         talker(publisher, action)
-        task_done = rospy.wait_for_message('/tasks/done', String)
-        if task_done.data == 'True':
+        task_done = rospy.wait_for_message('/tasks/done', Bool)
+        if task_done.data == True:
             print('Task has been completed')
 
 

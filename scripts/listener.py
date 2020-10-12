@@ -5,14 +5,15 @@
 
 import rospy
 from std_msgs.msg import String
+from std_msgs.msg import Bool
 import time
 
-PUBLISHER = rospy.Publisher('/tasks/done', String, queue_size=10)
+PUBLISHER = rospy.Publisher('/tasks/done', Bool, queue_size=10)
 
 def callback(data):
     rospy.loginfo(rospy.get_caller_id() + 'I heard %s', data.data)
     time.sleep(1)
-    PUBLISHER.publish('True')
+    PUBLISHER.publish(True)
 
 def listener():
 
