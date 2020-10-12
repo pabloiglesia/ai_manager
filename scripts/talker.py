@@ -4,9 +4,14 @@
 
 import rospy
 from std_msgs.msg import String
+from sensor_msgs.msg import Image
+from ImageController import ImageController
 import random
 
-def gather_state_info():
+
+def gather_state_info(img_controller):
+    msg = rospy.wait_for_message('/usb_cam/image_raw', Image)
+    img_controller.record_image(msg)
     print('TODO: Gather information about the new state')
 
 
@@ -26,9 +31,10 @@ def talker(publisher, action):
 def main():
     publisher = rospy.Publisher('/tasks/action', String, queue_size=10)
     rospy.init_node('ai_manager', anonymous=True)
+    image = ImageController()
 
     while True:
-        gather_state_info()
+        gather_state_info(image)
         action = rl_algorithm()
         talker(publisher, action)
         task_done = rospy.wait_for_message('/tasks/done', String)
