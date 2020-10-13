@@ -44,6 +44,7 @@ def main():
 
 if __name__ == '__main__':
     try:
+        print("Funciona")
         main()
     except rospy.ROSInterruptException:
         pass
