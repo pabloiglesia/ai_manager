@@ -148,7 +148,7 @@ def get_action():
     rospy.wait_for_service('get_actions')
     try:
         get_actions = rospy.ServiceProxy('get_actions', GetActions)
-        return get_actions(relative_coordinates[0], relative_coordinates[1])
+        return get_actions(relative_coordinates[0], relative_coordinates[1]).action
     except rospy.ServiceException as e:
         print("Service call failed: %s"%e)
 

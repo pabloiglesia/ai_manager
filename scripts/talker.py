@@ -71,10 +71,11 @@ def main():
         # talker(publisher, action)  # Publish the action
 
 def handle_get_actions(req):
-    print("Returning action for coordinates" %(req.x, req.y))
-    current_coordinates = [req.a,req.b]
+    print("Returning action for coordinates {} and {}".format(req.x, req.y))
+    current_coordinates = [req.x,req.y]
     gather_state_info()  # Gathers state information
     action = rl_algorithm(current_coordinates)
+    print(action)
     return GetActionsResponse(action)
 
 def get_actions_server():
