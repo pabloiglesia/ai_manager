@@ -18,11 +18,14 @@ import random
 from math import pi
 import rospy
 from geometry_msgs.msg import Pose
+from std_msgs.msg import Bool
+from std_msgs.msg import String
+
 
 from ur_icam_description.robotUR import RobotUR
 
 #Publisher information
-PUBLISHER = rospy.Publisher('/tasks/done', String, queue_size=10)
+PUBLISHER = rospy.Publisher('/tasks/done', Bool, queue_size=10)
 #Global variable for myRobot
 MY_ROBOT = RobotUR()
 
@@ -80,7 +83,7 @@ def callback(data):
     rospy.loginfo(rospy.get_caller_id() + 'performing action %s',data.data )
     # Select the action for the current state based on the actions published by the talker
     take_action(data.data)
-    PUBLISHER.publish('True')
+    PUBLISHER.publish(True)
 
 def listener():
 
