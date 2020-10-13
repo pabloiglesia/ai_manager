@@ -38,7 +38,7 @@ def rl_algorithm(current_coordinates):
     # TODO: Create Rl Algorithm (Random action is taken now
     actions = ['north', 'south', 'east', 'west', 'pick']
 
-    if abs(current_coordinates[0]) > 0.2 or abs(current_coordinates[1]) > 0.14:
+    if abs(current_coordinates[0]) > 0.14 or abs(current_coordinates[1]) > 0.2:
         print("Estado terminal")
         return 'random_state'
     else:

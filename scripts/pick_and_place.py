@@ -110,9 +110,13 @@ def listener():
     # spin() simply keeps python from exiting until this node is stopped
     rospy.spin()
 
+# Function to control the mnoment when the actions are done, so they can be published.
+
 def action_is_done():
-    time.sleep(2)
+    #expected_coordinates=calculate_current_coordinates
+    #while relative_coordinates != expected_coordinates:
     relative_coordinates=calculate_current_coordinates()
+
     data_to_send = Float64MultiArray()  # the data to be sent, initialise the array
     data_to_send.data = relative_coordinates  # assign the array with the value you want to send
     PUBLISHER.publish(data_to_send)
@@ -123,7 +127,6 @@ def take_action(action):
     print(action)
     if action == 'north':
         take_north(distance)
-
     elif action == 'south':
         take_south(distance)
     elif action == 'east':
@@ -134,7 +137,9 @@ def take_action(action):
         pick_and_place(MY_ROBOT.get_current_pose().pose.position.z - PICK_MOVEMENT_DISTANCE)
     elif action == 'random_state':
         go_to_random_state()
+    print("Done")
     action_is_done()
+
 #Action north: positive x
 
 def take_north(distance):
@@ -193,7 +198,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print('interrupted!')
 
-##TODO
+
 
 
 # print("Press ENTER to continue")
