@@ -22,6 +22,7 @@ from geometry_msgs.msg import Pose
 from std_msgs.msg import Bool
 from std_msgs.msg import Float64MultiArray
 from std_msgs.msg import String
+from AIManager.srv import GetActions
 
 
 from ur_icam_description.robotUR import RobotUR
@@ -85,18 +86,6 @@ def calculate_current_coordinates():
     return [relative_coordinate_x,relative_coordinate_y]
 
 
-# Function to control the moment when the actions are done, so they can be published.
-def action_is_done():
-    # expected_coordinates=calculate_current_coordinates
-    # while relative_coordinates != expected_coordinates:
-    # time.sleep(0.5)
-    relative_coordinates=calculate_current_coordinates()
-
-    data_to_send = Float64MultiArray()  # the data to be sent, initialise the array
-    data_to_send.data = relative_coordinates  # assign the array with the value you want to send
-    PUBLISHER.publish(data_to_send)
-
-
 # This function defines the movements that robot should make depending on the action listened
 def take_action(action):
     distance = 0.02 # Movement in metres
@@ -113,8 +102,6 @@ def take_action(action):
         pick_and_place(MY_ROBOT.get_current_pose().pose.position.z - PICK_MOVEMENT_DISTANCE)
     elif action == 'random_state':
         go_to_random_state()
-    print("Done")
-    action_is_done()
 
 
 # Action north: positive x
@@ -156,25 +143,47 @@ def go_to_random_state():
     relative_move(x_movement, y_movement, 0)
 
 
-def callback(data):
-    rospy.loginfo(rospy.get_caller_id() + 'performing action %s',data.data )
-    # Select the action for the current state based on the actions published by the talker
-    take_action(data.data)
+def get_action():
+    relative_coordinates = calculate_current_coordinates()
+    rospy.wait_for_service('get_actions')
+    try:
+        get_actions = rospy.ServiceProxy('get_actions', GetActions)
+        return get_actions(relative_coordinates[0], relative_coordinates[1])
+    except rospy.ServiceException as e:
+        print("Service call failed: %s"%e)
 
 
-def listener():
+# Function to control the moment when the actions are done, so they can be published.
+# def action_is_done():
+#     # expected_coordinates=calculate_current_coordinates
+#     # while relative_coordinates != expected_coordinates:
+#     # time.sleep(0.5)
+#     relative_coordinates = calculate_current_coordinates()
+#
+#     data_to_send = Float64MultiArray()  # the data to be sent, initialise the array
+#     data_to_send.data = relative_coordinates  # assign the array with the value you want to send
+#     PUBLISHER.publish(data_to_send)
 
-    # In ROS, nodes are uniquely named. If two nodes with the same
-    # name are launched, the previous one is kicked off. The
-    # anonymous=True flag means that rospy will choose a unique
-    # name for our 'listener' node so that multiple listeners can
-    # run simultaneously.
-    # rospy.init_node('arm_controller', anonymous=True)
 
-    rospy.Subscriber('/tasks/action', String, callback)
+# def callback(data):
+#     rospy.loginfo(rospy.get_caller_id() + 'performing action %s',data.data )
+#     # Select the action for the current state based on the actions published by the talker
+#     take_action(data.data)
 
-    # spin() simply keeps python from exiting until this node is stopped
-    rospy.spin()
+
+# def listener():
+#
+#     # In ROS, nodes are uniquely named. If two nodes with the same
+#     # name are launched, the previous one is kicked off. The
+#     # anonymous=True flag means that rospy will choose a unique
+#     # name for our 'listener' node so that multiple listeners can
+#     # run simultaneously.
+#     # rospy.init_node('arm_controller', anonymous=True)
+#
+#     rospy.Subscriber('/tasks/action', String, callback)
+#
+#     # spin() simply keeps python from exiting until this node is stopped
+#     rospy.spin()
 
 
 if __name__ == '__main__':
@@ -192,4 +201,8 @@ if __name__ == '__main__':
     take_action('random_state')
 
     # Init listener node
-    listener()
+    # listener()
+
+    while True:
+        action = get_action()
+        take_action(action)
