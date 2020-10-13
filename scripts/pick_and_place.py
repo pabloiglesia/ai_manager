@@ -26,9 +26,9 @@ from std_msgs.msg import String
 
 from ur_icam_description.robotUR import RobotUR
 
-#Publisher information
+# Publisher information
 PUBLISHER = rospy.Publisher('/tasks/done', Float64MultiArray, queue_size=10)
-#Global variable for myRobot
+# Global variable for myRobot
 MY_ROBOT = RobotUR()
 
 
@@ -39,6 +39,7 @@ BOX_CENTER_ANGULAR = [2.7776150703430176, -1.5684941450702112, 1.299912452697754
 BOX_CENTER_CARTESIAN = [-0.31899288568, -0.00357907370787, 0.226626573286]
 
 PICK_MOVEMENT_DISTANCE = 0.215
+
 
 def generate_random_state(BOX_X, BOX_Y):
     coordinate_x = random.uniform(-BOX_X / 2, BOX_X / 2)
@@ -84,11 +85,11 @@ def calculate_current_coordinates():
     return [relative_coordinate_x,relative_coordinate_y]
 
 
-# Function to control the mnoment when the actions are done, so they can be published.
+# Function to control the moment when the actions are done, so they can be published.
 def action_is_done():
-    #expected_coordinates=calculate_current_coordinates
-    #while relative_coordinates != expected_coordinates:
-    #time.sleep(0.5)
+    # expected_coordinates=calculate_current_coordinates
+    # while relative_coordinates != expected_coordinates:
+    # time.sleep(0.5)
     relative_coordinates=calculate_current_coordinates()
 
     data_to_send = Float64MultiArray()  # the data to be sent, initialise the array
@@ -98,7 +99,7 @@ def action_is_done():
 
 # This function defines the movements that robot should make depending on the action listened
 def take_action(action):
-    distance=0.02 #Movement in metres
+    distance = 0.02 # Movement in metres
     print(action)
     if action == 'north':
         take_north(distance)
@@ -168,7 +169,7 @@ def listener():
     # anonymous=True flag means that rospy will choose a unique
     # name for our 'listener' node so that multiple listeners can
     # run simultaneously.
-    #rospy.init_node('arm_controller', anonymous=True)
+    # rospy.init_node('arm_controller', anonymous=True)
 
     rospy.Subscriber('/tasks/action', String, callback)
 
@@ -192,14 +193,3 @@ if __name__ == '__main__':
 
     # Init listener node
     listener()
-
-
-
-# print("Press ENTER to continue")
-# raw_input()
-# pose_goal = Pose()
-# pose_goal.position.x = 0.4
-# pose_goal.position.y = 0.1
-# pose_goal.position.z = 0.4
-# MY_ROBOT.go_to_pose_goal(pose_goal)
-# print("The end")
