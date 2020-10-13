@@ -83,7 +83,7 @@ def callback(data):
     rospy.loginfo(rospy.get_caller_id() + 'performing action %s',data.data )
     # Select the action for the current state based on the actions published by the talker
     take_action(data.data)
-    PUBLISHER.publish(True)
+
 
 def listener():
 
@@ -92,12 +92,16 @@ def listener():
     # anonymous=True flag means that rospy will choose a unique
     # name for our 'listener' node so that multiple listeners can
     # run simultaneously.
-    rospy.init_node('arm_controller', anonymous=True)
+    #rospy.init_node('arm_controller', anonymous=True)
 
     rospy.Subscriber('/tasks/action', String, callback)
 
     # spin() simply keeps python from exiting until this node is stopped
     rospy.spin()
+
+def action_is_done():
+    time.wait(2)
+    PUBLISHER.publish(True)
 
 # This function defines the movements that robot should make depending on the action listened
 def take_action(x_movement, y_movement,action):
@@ -117,9 +121,10 @@ def take_action(x_movement, y_movement,action):
         relative_move(x_movement, y_movement, 0)
     elif action is 'pick':
         pick_and_place(MY_ROBOT.get_current_pose().pose.position.z - PICK_MOVEMENT_DISTANCE)
+    elif action is 'random_state':
+        go_to_random_state()
 
-    return x_movement, y_movement
-
+    action_is_done()
 #Action north: positive x
 
 def take_north(distance):
@@ -174,7 +179,7 @@ if __name__ == '__main__':
 
     try:
             #Let's put the robot in a random position to start
-            go_to_random_state()
+            take_action('random_state')
 
             # Init listener node
             listener()

@@ -1,11 +1,8 @@
 #!/usr/bin/env python
 """
-
 Code used to train the UR3 robot to perform a pick and place task using Reinforcement Learning and Image Recognition.
-
 This code does not perform actions directly into the robot, it just posts actions in a ROS topic and
 gathers state information from another ROS topic.
-
 """
 
 import rospy
@@ -19,7 +16,6 @@ import random
 def gather_state_info(img_controller):
     """
     This method gather information about the ur3 robot state by reading several ROS topics
-
     :param img_controller: class which will allow us to save sensor_msgs images
     """
 
@@ -35,7 +31,6 @@ def gather_state_info(img_controller):
 def rl_algorithm():
     """
     This function implements a Reinforcement Learning algorithm to controll the UR3 robot.
-
     :return: action taken
     """
     # TODO: Create Rl Algorithm (Random action is taken now
@@ -47,7 +42,6 @@ def rl_algorithm():
 def talker(publisher, action):
     """
     Publish the selected action into the ROS topic
-
     :param action:
     :type publisher: object
     """
