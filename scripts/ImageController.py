@@ -7,7 +7,7 @@ from PIL import Image
 class ImageController:
     def __init__(self, path=os.path.dirname(os.path.realpath(__file__))):
         self.indImage = 0
-        #self.bridge = cv_bridge.CvBridge()
+        self.bridge = cv_bridge.CvBridge()
         self.path = "{}/images".format(path)
 
     def record_image(self, msg):
