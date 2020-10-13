@@ -115,6 +115,7 @@ def listener():
 def action_is_done():
     #expected_coordinates=calculate_current_coordinates
     #while relative_coordinates != expected_coordinates:
+    #time.sleep(0.5)
     relative_coordinates=calculate_current_coordinates()
 
     data_to_send = Float64MultiArray()  # the data to be sent, initialise the array
