@@ -73,6 +73,7 @@ def calculate_relative_movement(relative_coordinates):
 
     return x_movement, y_movement
 
+
 def calculate_current_coordinates():
     absolut_coordinate_x=MY_ROBOT.get_current_pose().pose.position.x
     absolut_coordinate_y=MY_ROBOT.get_current_pose().pose.position.y
@@ -82,6 +83,60 @@ def calculate_current_coordinates():
 
     return [relative_coordinate_x,relative_coordinate_y]
 
+
+# Function to control the mnoment when the actions are done, so they can be published.
+def action_is_done():
+    #expected_coordinates=calculate_current_coordinates
+    #while relative_coordinates != expected_coordinates:
+    #time.sleep(0.5)
+    relative_coordinates=calculate_current_coordinates()
+
+    data_to_send = Float64MultiArray()  # the data to be sent, initialise the array
+    data_to_send.data = relative_coordinates  # assign the array with the value you want to send
+    PUBLISHER.publish(data_to_send)
+
+
+# This function defines the movements that robot should make depending on the action listened
+def take_action(action):
+    distance=0.02 #Movement in metres
+    print(action)
+    if action == 'north':
+        take_north(distance)
+    elif action == 'south':
+        take_south(distance)
+    elif action == 'east':
+        take_east(distance)
+    elif action == 'west':
+        take_west(distance)
+    elif action == 'pick':
+        pick_and_place(MY_ROBOT.get_current_pose().pose.position.z - PICK_MOVEMENT_DISTANCE)
+    elif action == 'random_state':
+        go_to_random_state()
+    print("Done")
+    action_is_done()
+
+
+# Action north: positive x
+def take_north(distance):
+    relative_move(distance, 0, 0)
+
+
+# Action south: negative x
+def take_south(distance):
+    relative_move(-distance, 0, 0)
+
+
+# Action east: negative y
+def take_east(distance):
+    relative_move(0, -distance, 0)
+
+
+# Action west: positive y
+def take_west(distance):
+    relative_move(0, distance, 0)
+
+
+# Action pick: Pick and place
 def pick_and_place(z_distance):
     # MY_ROBOT.open_gripper()
     # rospy.sleep(3)
@@ -89,6 +144,16 @@ def pick_and_place(z_distance):
     # MY_ROBOT.close_gripper()
     # rospy.sleep(3)
     relative_move(0, 0, z_distance)
+
+
+def go_to_random_state():
+    # Move robot to random positions using relative moves. Get coordinates
+    relative_coordinates = generate_random_state(BOX_X, BOX_Y)
+    # Calculate the new coordinates
+    x_movement, y_movement = calculate_relative_movement(relative_coordinates)
+    # Move the robot to the random state
+    relative_move(x_movement, y_movement, 0)
+
 
 def callback(data):
     rospy.loginfo(rospy.get_caller_id() + 'performing action %s',data.data )
@@ -110,66 +175,6 @@ def listener():
     # spin() simply keeps python from exiting until this node is stopped
     rospy.spin()
 
-# Function to control the mnoment when the actions are done, so they can be published.
-
-def action_is_done():
-    #expected_coordinates=calculate_current_coordinates
-    #while relative_coordinates != expected_coordinates:
-    #time.sleep(0.5)
-    relative_coordinates=calculate_current_coordinates()
-
-    data_to_send = Float64MultiArray()  # the data to be sent, initialise the array
-    data_to_send.data = relative_coordinates  # assign the array with the value you want to send
-    PUBLISHER.publish(data_to_send)
-
-# This function defines the movements that robot should make depending on the action listened
-def take_action(action):
-    distance=0.02 #Movement in metres
-    print(action)
-    if action == 'north':
-        take_north(distance)
-    elif action == 'south':
-        take_south(distance)
-    elif action == 'east':
-        take_east(distance)
-    elif action == 'west':
-        take_west(distance)
-    elif action == 'pick':
-        pick_and_place(MY_ROBOT.get_current_pose().pose.position.z - PICK_MOVEMENT_DISTANCE)
-    elif action == 'random_state':
-        go_to_random_state()
-    print("Done")
-    action_is_done()
-
-#Action north: positive x
-
-def take_north(distance):
-    relative_move(distance, 0, 0)
-
-# Action south: negative x
-def take_south(distance):
-    relative_move(-distance, 0, 0)
-
-# Action east: negative y
-def take_east(distance):
-    relative_move(0, -distance, 0)
-
-# Action west: positive y
-def take_west(distance):
-    relative_move(0, distance, 0)
-
-#Action pick: Pick and place
-#def take_pick(x_movement, y_movement,distance):
-#    return x, y
-
-def go_to_random_state():
-    # Move robot to random positions using relative moves. Get coordinates
-    relative_coordinates = generate_random_state(BOX_X, BOX_Y)
-    # Calculate the new coordinates
-    x_movement, y_movement = calculate_relative_movement(relative_coordinates)
-    # Move the robot to the random state
-    relative_move(x_movement, y_movement, 0)
-
 
 if __name__ == '__main__':
 
@@ -182,23 +187,11 @@ if __name__ == '__main__':
     else:
         print("Target not reached")
 
-    try:
-            #Let's put the robot in a random position to start, creation of new state
-            take_action('random_state')
+    # Let's put the robot in a random position to start, creation of new state
+    take_action('random_state')
 
-            # Init listener node
-            listener()
-
-            #relative_move(x_movement, y_movement, 0)
-            # MY_ROBOT.open_gripper()
-            # rospy.sleep(3)
-
-            print(MY_ROBOT.get_current_pose().pose.position.z - PICK_MOVEMENT_DISTANCE)
-
-            #pick_and_place(MY_ROBOT.get_current_pose().pose.position.z - PICK_MOVEMENT_DISTANCE)
-    except KeyboardInterrupt:
-        print('interrupted!')
-
+    # Init listener node
+    listener()
 
 
 
