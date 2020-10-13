@@ -34,12 +34,15 @@ def rl_algorithm(current_coordinates):
     This function implements a Reinforcement Learning algorithm to controll the UR3 robot.
     :return: action taken
     """
+    print(current_coordinates)
     # TODO: Create Rl Algorithm (Random action is taken now
     actions = ['north', 'south', 'east', 'west', 'pick']
 
-    if abs(current_coordinates[0]) > 11 or abs(current_coordinates[1]) > 11:
+    if abs(current_coordinates[0]) > 0.2 or abs(current_coordinates[1]) > 0.14:
+        print("Estado terminal")
         return 'random_state'
     else:
+        print("Estado normal")
         idx = random.randint(0, 4)
         return actions[idx]
 
