@@ -21,14 +21,12 @@ def gather_state_info(img_controller):
 
     current_coordinates = rospy.wait_for_message('/tasks/done', Float64MultiArray)  # To know if the previous task
     # has been completed and get the current coordinates of the robot
-    if task_done.data:
-        print('Task has been completed')
 
     msg = rospy.wait_for_message('/usb_cam/image_raw', Image)  # We retrieve state image
     img_controller.record_image(msg)  # We save the image in the replay memory
     # TODO: Gather information about the new state
 
-    return current_coordinates
+    return current_coordinates.data
 
 
 def rl_algorithm(current_coordinates):
