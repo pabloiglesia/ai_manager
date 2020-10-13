@@ -8,7 +8,7 @@ gathers state information from another ROS topic.
 import rospy
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
-from std_msgs.msg import Bool
+from std_msgs.msg import Float64MultiArray
 from ImageController import ImageController
 import random
 
@@ -19,7 +19,8 @@ def gather_state_info(img_controller):
     :param img_controller: class which will allow us to save sensor_msgs images
     """
 
-    task_done = rospy.wait_for_message('/tasks/done', Bool)  # To know if the previous task has been completed
+    current_coordinates = rospy.wait_for_message('/tasks/done', Float64MultiArray)  # To know if the previous task
+    # has been completed and get the current coordinates of the robot
     if task_done.data:
         print('Task has been completed')
 
@@ -27,16 +28,22 @@ def gather_state_info(img_controller):
     img_controller.record_image(msg)  # We save the image in the replay memory
     # TODO: Gather information about the new state
 
+    return current_coordinates
 
-def rl_algorithm():
+
+def rl_algorithm(current_coordinates):
     """
     This function implements a Reinforcement Learning algorithm to controll the UR3 robot.
     :return: action taken
     """
     # TODO: Create Rl Algorithm (Random action is taken now
     actions = ['north', 'south', 'east', 'west', 'pick']
-    idx = random.randint(0, 4)
-    return actions[idx]
+
+    if abs(current_coordinates[0]) > 11 or abs(current_coordinates[1]) > 11:
+        return 'random_state'
+    else:
+        idx = random.randint(0, 4)
+        return actions[idx]
 
 
 def talker(publisher, action):
@@ -55,8 +62,8 @@ def main():
     image = ImageController(capacity=10)  # Image controller initialization
 
     while True:
-        gather_state_info(image)  # Gathers state information
-        action = rl_algorithm()  # Select action and train the algorithm
+        current_coordinates = gather_state_info(image)  # Gathers state information
+        action = rl_algorithm(current_coordinates)  # Select action and train the algorithm
         talker(publisher, action)  # Publish the action
 
 
