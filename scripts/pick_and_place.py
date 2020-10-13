@@ -178,7 +178,7 @@ if __name__ == '__main__':
         print("Target not reached")
 
     try:
-            #Let's put the robot in a random position to start
+            #Let's put the robot in a random position to start, creation of new state
             take_action('random_state')
 
             # Init listener node
