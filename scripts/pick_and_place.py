@@ -139,14 +139,14 @@ def pick_and_place():
         # Check if the distance is the correct one
         # TODO : check if the distance is in the correct measures
         distance = rospy.wait_for_message('distance', Float32)  # We retrieve sensor distance
-        print("Distance to object:%f",distance)
-        if distance <= Environment.PICK_DISTANCE:
+        print("Distance to object: {}".format(distance.data))
+        if distance.data <= Environment.PICK_DISTANCE:
             # TODO : Check what kind of msg the subscriber is waiting
             PUBLISHER.publish(True)
             time.sleep(2)
             distance_ok = True
         else:
-            difference = distance - Environment.PICK_DISTANCE
+            difference = distance.data - Environment.PICK_DISTANCE
             up_distance+=difference
             relative_move(0, 0, -difference)
             # relative_move(0, 0, -z_distance)

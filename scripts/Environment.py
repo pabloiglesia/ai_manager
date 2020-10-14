@@ -15,7 +15,7 @@ class Environment:
 
     @staticmethod
     def is_terminal_state(coordinates):
-        def get_limits(length): length / 2 - 0.01
+        def get_limits(length): return length / 2 - 0.01
         print("Coordenada real x: {}, Limite calculado: {}".format(coordinates[0], get_limits(Environment.X_LENGTH)))
         print("Coordenada real y: {}, Limite calculado: {}".format(coordinates[1], get_limits(Environment.Y_LENGTH)))
         x_limit_reached = abs(coordinates[0]) > get_limits(Environment.X_LENGTH)
