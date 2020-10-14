@@ -12,13 +12,13 @@ roslaunch ur_robot_driver ur3_bringup.launch robot_ip:=10.31.56.102 kinematics_c
 roslaunch ur3_moveit_config ur3_moveit_planning_execution.launch
 
 - Activate the talker
-rosrun AIManager talker.py
+rosrun ai_manager talker.py
 
 - Activate the node
-rosrun AIManager distance_sensor_simulator.py
+rosrun ai_manager distance_sensor_simulator.py
 
 - Finally, we can run the program
-rosrun AIManager pick_and_place.py
+rosrun ai_manager pick_and_place.py
 
 """
 
@@ -32,7 +32,7 @@ from std_msgs.msg import Bool
 from std_msgs.msg import Float64MultiArray
 from std_msgs.msg import String
 from std_msgs.msg import Float32
-from AIManager.srv import GetActions
+from ai_manager.srv import GetActions
 from Environment import Environment
 
 

@@ -1,1 +1,1 @@
-# AIManager
+# ai_manager

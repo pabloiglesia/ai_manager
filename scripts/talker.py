@@ -10,7 +10,7 @@ from sensor_msgs.msg import Image
 
 from ImageController import ImageController
 from Environment import Environment
-from AIManager.srv import GetActions, GetActionsResponse
+from ai_manager.srv import GetActions, GetActionsResponse
 
 import random
 
