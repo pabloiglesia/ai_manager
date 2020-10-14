@@ -2,11 +2,20 @@
 # coding: utf-8
 
 """
+- We need to connect the camera and the nodes
+roslaunch ur_icam_description webcam.launch
+
 - We need to establish a connection to the robot with the following comand:
 roslaunch ur_robot_driver ur3_bringup.launch robot_ip:=10.31.56.102 kinematics_config:=${HOME}/Calibration/ur3_calibration.yaml
 
 - Then, we ned to activate moovit server:
 roslaunch ur3_moveit_config ur3_moveit_planning_execution.launch
+
+- Activate the talker
+rosrun AIManager talker.py
+
+- Activate the node
+rosrun AIManager distance_sensor_simulator.py
 
 - Finally, we can run the program
 rosrun AIManager pick_and_place.py
