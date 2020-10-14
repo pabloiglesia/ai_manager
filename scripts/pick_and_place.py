@@ -134,8 +134,8 @@ def take_west(distance):
 def pick_and_place():
     # In this function we should read the distance
     up_distance= 0
-    distancia_ok = False #inicializamos la distancia a cero
-    while not distancia_ok:
+    distance_ok = False #inicializamos la distancia a cero
+    while not distance_ok:
         # Check if the distance is the correct one
         # TODO : check if the distance is in the correct measures
         distance = rospy.wait_for_message('distance', Float32)  # We retrieve sensor distance
@@ -144,7 +144,7 @@ def pick_and_place():
             # TODO : Check what kind of msg the subscriber is waiting
             PUBLISHER.publish(True)
             time.sleep(2)
-            distancia_ok = True
+            distance_ok = True
         else:
             difference = distance - Environment.PICK_DISTANCE
             up_distance+=difference
