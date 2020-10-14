@@ -153,7 +153,7 @@ def pick_and_place():
 
     relative_move(0, 0, up_distance)  # We went back to the original pose
 
-    object_gripped = rospy.wait_for_message('object_gripped', Bool)
+    object_gripped = rospy.wait_for_message('object_gripped', Bool).data
     if object_gripped:  # If we have gripped an object we place it into the desired point
         take_place()
 
@@ -165,6 +165,33 @@ def go_to_random_state():
     # Move the robot to the random state
     relative_move(x_movement, y_movement, 0)
 
+# Function to define the place for placing the grasped objects
+def take_place():
+    # First, we get the cartesian coordinates of one of the corner
+    x_box,y_box = Environment.get_relative_corner(0)
+    x_move, y_move = calculate_relative_movement([x_box,y_box])
+    # We move the robot to the corner of the box
+    relative_move(x_move, y_move, 0)
+    # We calculate the trajectory for our robot to reach the box
+    trajectory_x = MY_ROBOT.get_current_pose().pose.position.x - Environment.PLACE_CARTESIAN_CENTER[0]
+    trajectory_y = MY_ROBOT.get_current_pose().pose.position.y - Environment.PLACE_CARTESIAN_CENTER[1]
+    trajectory_z = - Environment.CARTESIAN_CENTER[2] + Environment.PLACE_CARTESIAN_CENTER[2]
+    # We move the robot to the coordinates desired to place the object
+    relative_move( 0, 0, trajectory_z )
+    relative_move( 0, trajectory_y, 0 )
+    relative_move( trajectory_x, 0, 0 )
+    # Then, we left the object
+    relative_move( 0, 0, -0.05)
+    # Then, we switch off the vacuum gripper so the object can be placed
+    # TODO : Check the correct information to send the topic
+    PUBLISHER.publish(False)
+    # Wait some seconds, in order to the msg to arrive to the gripper
+    time.sleep(2)
+    # Then the robot goes up
+    relative_move(0, 0, 0.05)
+    # Final we put the robot in the center of the box, the episode should finish now
+    MY_ROBOT.go_to_joint_state(Environment.ANGULAR_CENTER)
+    # TODO : publicar si se ha acabado el episodio
 
 def get_action():
     relative_coordinates = calculate_current_coordinates()

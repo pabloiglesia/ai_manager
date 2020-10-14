@@ -10,7 +10,7 @@ def talker():
     rospy.init_node('object_gripped', anonymous=True)
     rate = rospy.Rate(10) # 10hz
     while not rospy.is_shutdown():
-        object_gripped = random.random() > 0.3
+        object_gripped = random.random() > 0.7
         rospy.loginfo("Object_gripped: {}".format(object_gripped))
         pub.publish(object_gripped)
         rate.sleep()
