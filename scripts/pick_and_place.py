@@ -96,7 +96,7 @@ def take_action(action):
     elif action == 'west':
         take_west(distance)
     elif action == 'pick':
-        pick_and_place(MY_ROBOT.get_current_pose().pose.position.z - PICK_MOVEMENT_DISTANCE)
+        pick_and_place()
     elif action == 'random_state':
         go_to_random_state()
 
@@ -122,8 +122,9 @@ def take_west(distance):
 
 
 # Action pick: Pick and place
-def pick_and_place(z_distance):
+def pick_and_place():
     # In this function we should read the distance
+    up_distance= 0
     distancia_ok = False #inicializamos la distancia a cero
     while not distancia_ok:
         # Check if the distance is the correct one
@@ -137,9 +138,10 @@ def pick_and_place(z_distance):
             distancia_ok = True
         else:
             difference = distance - Environment.PICK_DISTANCE
+            up_distance+=difference
             relative_move(0, 0, -difference)
             # relative_move(0, 0, -z_distance)
-    relative_move(0, 0, z_distance)
+    relative_move(0, 0, up_distance)
 
 
 def go_to_random_state():
