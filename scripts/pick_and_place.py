@@ -33,15 +33,12 @@ PUBLISHER = rospy.Publisher('/tasks/done', Float64MultiArray, queue_size=10)
 # Global variable for myRobot
 MY_ROBOT = RobotUR()
 
-# Global object that defines the environment
-ENVIRONMENT = Environment()
-
 PICK_MOVEMENT_DISTANCE = 0.215
 
 
 def generate_random_state():
-    coordinate_x = random.uniform(-ENVIRONMENT.x_length / 2, ENVIRONMENT.x_length / 2)
-    coordinate_y = random.uniform(-ENVIRONMENT.y_length / 2, ENVIRONMENT.y_length / 2)
+    coordinate_x = random.uniform(-Environment.X_LENGTH / 2, Environment.X_LENGTH / 2)
+    coordinate_y = random.uniform(-Environment.Y_LENGTH / 2, Environment.Y_LENGTH / 2)
     return [coordinate_x, coordinate_y]
 
 
@@ -62,8 +59,8 @@ def relative_move(x, y, z):
 
 
 def calculate_relative_movement(relative_coordinates):
-    absolute_coordinates_x = ENVIRONMENT.cartesian_center[0] - relative_coordinates[0]
-    absolute_coordinates_y = ENVIRONMENT.cartesian_center[1] - relative_coordinates[1]
+    absolute_coordinates_x = Environment.CARTESIAN_CENTER[0] - relative_coordinates[0]
+    absolute_coordinates_y = Environment.CARTESIAN_CENTER[1] - relative_coordinates[1]
 
     current_pose = MY_ROBOT.get_current_pose()
 
@@ -77,8 +74,8 @@ def calculate_current_coordinates():
     absolut_coordinate_x = MY_ROBOT.get_current_pose().pose.position.x
     absolut_coordinate_y = MY_ROBOT.get_current_pose().pose.position.y
 
-    relative_coordinate_x = ENVIRONMENT.cartesian_center[0] - absolut_coordinate_x
-    relative_coordinate_y = ENVIRONMENT.cartesian_center[1] - absolut_coordinate_y
+    relative_coordinate_x = Environment.CARTESIAN_CENTER[0] - absolut_coordinate_x
+    relative_coordinate_y = Environment.CARTESIAN_CENTER[1] - absolut_coordinate_y
 
     return [relative_coordinate_x,relative_coordinate_y]
 
@@ -187,7 +184,7 @@ if __name__ == '__main__':
 
     rospy.init_node('robotUR')
     # Test of positioning with angular coordinates
-    targetReached = MY_ROBOT.go_to_joint_state(ENVIRONMENT.angular_center)
+    targetReached = MY_ROBOT.go_to_joint_state(Environment.ANGULAR_CENTER)
 
     if targetReached:
         print("Target reachead")
