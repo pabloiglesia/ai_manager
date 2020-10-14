@@ -22,6 +22,7 @@ from geometry_msgs.msg import Pose
 from std_msgs.msg import Bool
 from std_msgs.msg import Float64MultiArray
 from std_msgs.msg import String
+from std_msgs.msg import Float32
 from AIManager.srv import GetActions
 from Environment import Environment
 
@@ -29,7 +30,9 @@ from Environment import Environment
 from ur_icam_description.robotUR import RobotUR
 
 # Publisher information
-PUBLISHER = rospy.Publisher('/tasks/done', Float64MultiArray, queue_size=10)
+# PUBLISHER = rospy.Publisher('/tasks/done', Float64MultiArray, queue_size=10)
+# Publisher for the topic switch_on_off
+PUBLISHER = rospy.Publisher('switch_on_off', Bool)
 # Global variable for myRobot
 MY_ROBOT = RobotUR()
 
@@ -120,11 +123,22 @@ def take_west(distance):
 
 # Action pick: Pick and place
 def pick_and_place(z_distance):
-    # MY_ROBOT.open_gripper()
-    # rospy.sleep(3)
-    relative_move( 0, 0, -z_distance)
-    # MY_ROBOT.close_gripper()
-    # rospy.sleep(3)
+    # In this function we should read the distance
+    distancia_ok = False #inicializamos la distancia a cero
+    while not distancia_ok:
+        # Check if the distance is the correct one
+        # TODO : check if the distance is in the correct measures
+        distance = rospy.wait_for_message('distance', Float32)  # We retrieve sensor distance
+        print("Distance to object:%f",distance)
+        if distance <= Environment.PICK_DISTANCE:
+            # TODO : Check what kind of msg the subscriber is waiting
+            PUBLISHER.publish(True)
+            time.sleep(2)
+            distancia_ok = True
+        else:
+            difference = distance - Environment.PICK_DISTANCE
+            relative_move(0, 0, -difference)
+            # relative_move(0, 0, -z_distance)
     relative_move(0, 0, z_distance)
 
 
