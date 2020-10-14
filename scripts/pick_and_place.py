@@ -132,26 +132,30 @@ def take_west(distance):
 
 # Action pick: Pick and place
 def pick_and_place():
-    # In this function we should read the distance
-    up_distance= 0
-    distance_ok = False #inicializamos la distancia a cero
+    # In this function we should read the distance to the object
+    up_distance = 0  # Variable were we store the distance that we have move the robot so that we can go back to the
+    # original pose
+    distance_ok = False  # False until target is reached
     while not distance_ok:
         # Check if the distance is the correct one
         # TODO : check if the distance is in the correct measures
-        distance = rospy.wait_for_message('distance', Float32)  # We retrieve sensor distance
-        print("Distance to object: {}".format(distance.data))
-        if distance.data <= Environment.PICK_DISTANCE:
-            # TODO : Check what kind of msg the subscriber is waiting
-            PUBLISHER.publish(True)
-            time.sleep(2)
-            distance_ok = True
-        else:
-            difference = distance.data - Environment.PICK_DISTANCE
-            up_distance+=difference
-            relative_move(0, 0, -difference)
-            # relative_move(0, 0, -z_distance)
-    relative_move(0, 0, up_distance)
+        distance = rospy.wait_for_message('distance', Float32).data  # We retrieve sensor distance
 
+        if distance <= Environment.PICK_DISTANCE:  # If distance is equal or smaller than the target distance
+            # TODO : Check what kind of msg the subscriber is waiting
+            PUBLISHER.publish(True)  # We try to pick the object enabling the vacuum gripper
+            time.sleep(2)  # We wait some time to let the vacuum pick the object
+            distance_ok = True  # End the loop by setting this variable to True
+        else:  # If the distance to the objects is higher than the target distance
+            difference = distance - Environment.PICK_DISTANCE  # We calculate the difference between the two distances
+            up_distance += difference  # We increment the up_distance variable
+            relative_move(0, 0, -difference)  # We try to move to the desired distance
+
+    relative_move(0, 0, up_distance)  # We went back to the original pose
+
+    object_gripped = rospy.wait_for_message('object_gripped', Bool)
+    if object_gripped:  # If we have gripped an object we place it into the desired point
+        take_place()
 
 def go_to_random_state():
     # Move robot to random positions using relative moves. Get coordinates
