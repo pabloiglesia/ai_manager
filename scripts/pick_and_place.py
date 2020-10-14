@@ -23,6 +23,7 @@ from std_msgs.msg import Bool
 from std_msgs.msg import Float64MultiArray
 from std_msgs.msg import String
 from AIManager.srv import GetActions
+from Environment import Environment
 
 
 from ur_icam_description.robotUR import RobotUR
@@ -32,19 +33,15 @@ PUBLISHER = rospy.Publisher('/tasks/done', Float64MultiArray, queue_size=10)
 # Global variable for myRobot
 MY_ROBOT = RobotUR()
 
-
-BOX_X = 0.30  # Box size in meters
-BOX_Y = 0.44  # Box size in meters
-BOX_CENTER_ANGULAR = [2.7776150703430176, -1.5684941450702112, 1.299912452697754, -1.3755658308612269,
-                      -1.5422008673297327, -0.3250663916217249]
-BOX_CENTER_CARTESIAN = [-0.31899288568, -0.00357907370787, 0.226626573286]
+# Global object that defines the environment
+ENVIRONMENT = Environment()
 
 PICK_MOVEMENT_DISTANCE = 0.215
 
 
-def generate_random_state(BOX_X, BOX_Y):
-    coordinate_x = random.uniform(-BOX_X / 2, BOX_X / 2)
-    coordinate_y = random.uniform(-BOX_Y / 2, BOX_Y / 2)
+def generate_random_state():
+    coordinate_x = random.uniform(-ENVIRONMENT.x_length / 2, ENVIRONMENT.x_length / 2)
+    coordinate_y = random.uniform(-ENVIRONMENT.y_length / 2, ENVIRONMENT.y_length / 2)
     return [coordinate_x, coordinate_y]
 
 
@@ -65,8 +62,8 @@ def relative_move(x, y, z):
 
 
 def calculate_relative_movement(relative_coordinates):
-    absolute_coordinates_x = BOX_CENTER_CARTESIAN[0] - relative_coordinates[0]
-    absolute_coordinates_y = BOX_CENTER_CARTESIAN[1] - relative_coordinates[1]
+    absolute_coordinates_x = ENVIRONMENT.cartesian_center[0] - relative_coordinates[0]
+    absolute_coordinates_y = ENVIRONMENT.cartesian_center[1] - relative_coordinates[1]
 
     current_pose = MY_ROBOT.get_current_pose()
 
@@ -77,11 +74,11 @@ def calculate_relative_movement(relative_coordinates):
 
 
 def calculate_current_coordinates():
-    absolut_coordinate_x=MY_ROBOT.get_current_pose().pose.position.x
-    absolut_coordinate_y=MY_ROBOT.get_current_pose().pose.position.y
+    absolut_coordinate_x = MY_ROBOT.get_current_pose().pose.position.x
+    absolut_coordinate_y = MY_ROBOT.get_current_pose().pose.position.y
 
-    relative_coordinate_x = BOX_CENTER_CARTESIAN[0] - absolut_coordinate_x
-    relative_coordinate_y = BOX_CENTER_CARTESIAN[1] - absolut_coordinate_y
+    relative_coordinate_x = ENVIRONMENT.cartesian_center[0] - absolut_coordinate_x
+    relative_coordinate_y = ENVIRONMENT.cartesian_center[1] - absolut_coordinate_y
 
     return [relative_coordinate_x,relative_coordinate_y]
 
@@ -136,7 +133,7 @@ def pick_and_place(z_distance):
 
 def go_to_random_state():
     # Move robot to random positions using relative moves. Get coordinates
-    relative_coordinates = generate_random_state(BOX_X, BOX_Y)
+    relative_coordinates = generate_random_state()
     # Calculate the new coordinates
     x_movement, y_movement = calculate_relative_movement(relative_coordinates)
     # Move the robot to the random state
@@ -190,7 +187,7 @@ if __name__ == '__main__':
 
     rospy.init_node('robotUR')
     # Test of positioning with angular coordinates
-    targetReached = MY_ROBOT.go_to_joint_state(BOX_CENTER_ANGULAR)
+    targetReached = MY_ROBOT.go_to_joint_state(ENVIRONMENT.angular_center)
 
     if targetReached:
         print("Target reachead")
