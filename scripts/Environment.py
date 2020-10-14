@@ -14,8 +14,10 @@ class Environment:
     PICK_DISTANCE = 0.01  # Distance to the object when the robot is performing the pick and place action
 
     @staticmethod
-    def is_terminal_state(self, coordinates):
+    def is_terminal_state(coordinates):
         def get_limits(length): length / 2 - 0.01
+        print("Coordenada real x: {}, Limite calculado: {}".format(coordinates[0], get_limits(Environment.X_LENGTH)))
+        print("Coordenada real y: {}, Limite calculado: {}".format(coordinates[1], get_limits(Environment.Y_LENGTH)))
         x_limit_reached = abs(coordinates[0]) > get_limits(Environment.X_LENGTH)
         y_limit_reached = abs(coordinates[1]) > get_limits(Environment.Y_LENGTH)
         return x_limit_reached or y_limit_reached
