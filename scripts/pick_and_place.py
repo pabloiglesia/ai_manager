@@ -168,7 +168,7 @@ def go_to_random_state():
 # Function to define the place for placing the grasped objects
 def take_place():
     # First, we get the cartesian coordinates of one of the corner
-    x_box,y_box = Environment.get_relative_corner(0)
+    x_box,y_box = Environment.get_relative_corner('se')
     x_move, y_move = calculate_relative_movement([x_box,y_box])
     # We move the robot to the corner of the box
     relative_move(x_move, y_move, 0)
