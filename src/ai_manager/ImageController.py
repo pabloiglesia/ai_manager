@@ -16,12 +16,19 @@ class ImageController:
         self.path = "{}/images".format(path)  # Path where the images are going to be saved
         self.capacity = capacity  # Number of images that we want to be stored. It will work as a FIFO queue
 
+        # If it does not exist, we create the path folder in our workspace
+        try:
+            os.stat(self.path)
+        except:
+            os.mkdir(self.path)
+
     def record_image(self, msg):
         # img = self.to_cv2(msg)
         # cv2.imwrite('{}/img{:04d}.png'.format(self.path, self.indImage), img)
 
         size = (msg.width,msg.height)  # Image size
-        img = Image.frombytes('RGB', size, msg.data)  # sensor_msg to Image
+        img = Image.frombytes('RGB', size, msg.data)  # sensor_msg to Image\
+
         img.save('{}/img{:04d}.png'.format(  # Saving image
             self.path,  # Path
             self.ind_saved_images % self.capacity)  # FIFO queue
