@@ -4,6 +4,8 @@ This environment is defined by its center (both cartesian and angular coordinate
 and other parameters
 """
 
+import random
+
 
 class Environment:
     X_LENGTH = 0.30  # Total length of the x axis environment in meters
@@ -25,6 +27,12 @@ class Environment:
         x_limit_reached = abs(coordinates[0]) > get_limits(Environment.X_LENGTH)  # x boundary reached
         y_limit_reached = abs(coordinates[1]) > get_limits(Environment.Y_LENGTH)  # y boundary reached
         return x_limit_reached or y_limit_reached  # If one or both or the boundaries are reached --> terminal state
+
+    @staticmethod
+    def generate_random_state():
+        coordinate_x = random.uniform(-Environment.X_LENGTH / 2, Environment.X_LENGTH / 2)
+        coordinate_y = random.uniform(-Environment.Y_LENGTH / 2, Environment.Y_LENGTH / 2)
+        return [coordinate_x, coordinate_y]
 
     @staticmethod
     def get_relative_corner(corner):
