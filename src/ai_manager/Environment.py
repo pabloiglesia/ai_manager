@@ -17,6 +17,8 @@ class Environment:
 
     PICK_DISTANCE = 0.01  # Distance to the object when the robot is performing the pick and place action
 
+    ACTION_DISTANCE = 0.02
+
     @staticmethod
     def is_terminal_state(coordinates, object_gripped):
         """
