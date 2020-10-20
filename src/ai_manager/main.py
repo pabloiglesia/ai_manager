@@ -28,7 +28,7 @@ def gather_state_info():
     # TODO: Gather information about the new state
 
 
-def rl_algorithm(current_coordinates):
+def rl_algorithm(current_coordinates, object_gripped):
     """
     This function implements a Reinforcement Learning algorithm to controll the UR3 robot.
     :return: action taken
@@ -36,7 +36,7 @@ def rl_algorithm(current_coordinates):
     # TODO: Create Rl Algorithm (Random action is taken now
     actions = ['north', 'south', 'east', 'west', 'pick']
 
-    if Environment.is_terminal_state(current_coordinates):
+    if Environment.is_terminal_state(current_coordinates, object_gripped):
         rospy.loginfo("Terminal state")
         return 'random_state'
     else:
@@ -51,9 +51,10 @@ def main():
 
 
 def handle_get_actions(req):
+    object_gripped = req.object_gripped
     current_coordinates = [req.x,req.y]
     gather_state_info()  # Gathers state information
-    action = rl_algorithm(current_coordinates)
+    action = rl_algorithm(current_coordinates, object_gripped)
     rospy.loginfo("Returning action for coordinates {} and {}: {}".format(req.x, req.y, action))
     return GetActionsResponse(action)
 

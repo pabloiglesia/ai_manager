@@ -18,7 +18,7 @@ class Environment:
     PICK_DISTANCE = 0.01  # Distance to the object when the robot is performing the pick and place action
 
     @staticmethod
-    def is_terminal_state(coordinates):
+    def is_terminal_state(coordinates, object_gripped):
         """
         Function used to determine if the current state of the robot is terminal or not
         :return: bool
@@ -26,7 +26,7 @@ class Environment:
         def get_limits(length): return length / 2 - 0.01  # functon to calculate the box boundaries
         x_limit_reached = abs(coordinates[0]) > get_limits(Environment.X_LENGTH)  # x boundary reached
         y_limit_reached = abs(coordinates[1]) > get_limits(Environment.Y_LENGTH)  # y boundary reached
-        return x_limit_reached or y_limit_reached  # If one or both or the boundaries are reached --> terminal state
+        return x_limit_reached or y_limit_reached or object_gripped # If one or both or the boundaries are reached --> terminal state
 
     @staticmethod
     def generate_random_state():
