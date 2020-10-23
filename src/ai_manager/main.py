@@ -6,26 +6,14 @@ gathers state information from another ROS topic.
 """
 
 import rospy
-from sensor_msgs.msg import Image
 
-from ImageController import ImageController
+from RLAlgorithm import RLAlgorithm
 from Environment import Environment
 from ai_manager.srv import GetActions, GetActionsResponse
 
-import random
-
+rospy.init_node('ai_manager', anonymous=True)  # ROS node initialization
 # Global Image Controller
-IMAGE_CONTROLLER = ImageController()
-
-
-def gather_state_info():
-    """
-    This method gather information about the ur3 robot state by reading several ROS topics
-    :param img_controller: class which will allow us to save sensor_msgs images
-    """
-    msg = rospy.wait_for_message('/usb_cam/image_raw', Image)  # We retrieve state image
-    IMAGE_CONTROLLER.record_image(msg)  # We save the image in the replay memory
-    # TODO: Gather information about the new state
+RL_ALGORITHM = RLAlgorithm(batch_size=10)
 
 
 def rl_algorithm(current_coordinates, object_gripped):
@@ -33,29 +21,40 @@ def rl_algorithm(current_coordinates, object_gripped):
     This function implements a Reinforcement Learning algorithm to controll the UR3 robot.
     :return: action taken
     """
-    # TODO: Create Rl Algorithm (Random action is taken now
-    actions = ['north', 'south', 'east', 'west', 'pick']
+    previous_state = RL_ALGORITHM.current_state
+    previous_action = RL_ALGORITHM.current_action
+    RL_ALGORITHM.em.gather_image_state()  # Gathers current state image
+    RL_ALGORITHM.current_state = RL_ALGORITHM.State(current_coordinates[0], current_coordinates[1], object_gripped,
+                                                    RL_ALGORITHM.em.image_msg)
+    reward = RL_ALGORITHM.em.calculate_reward()
 
-    if Environment.is_terminal_state(current_coordinates, object_gripped):
-        rospy.loginfo("Terminal state")
-        return 'random_state'
-    else:
-        idx = random.randint(0, 4)
-        return actions[idx]
+    action = RL_ALGORITHM.agent.select_action(RL_ALGORITHM.current_state, RL_ALGORITHM.policy_net)
 
+    if action != 'random_state':
+        if RL_ALGORITHM.agent.current_step > 1:
 
-def main():
-    # publisher = rospy.Publisher('/tasks/action', String, queue_size=10)  # Publisher definition
-    rospy.init_node('ai_manager', anonymous=True)  # ROS node initialization
-    get_actions_server()
+            RL_ALGORITHM.memory.push(
+                RL_ALGORITHM.Experience(previous_state.image_raw, previous_action, RL_ALGORITHM.current_state.image_raw,
+                                        reward))
+
+            rospy.loginfo("Step: {}, Episode: {}, Previous reward: {}, Previous action: {}".format(
+                RL_ALGORITHM.agent.current_step - 1,
+                RL_ALGORITHM.episode,
+                reward,
+                previous_action))
+
+        RL_ALGORITHM.train_net()
+
+    return action
 
 
 def handle_get_actions(req):
     object_gripped = req.object_gripped
-    current_coordinates = [req.x,req.y]
-    gather_state_info()  # Gathers state information
+    current_coordinates = [req.x, req.y]
     action = rl_algorithm(current_coordinates, object_gripped)
-    rospy.loginfo("Returning action for coordinates {} and {}: {}".format(req.x, req.y, action))
+
+    # RL_ALGORITHM.plot()
+
     return GetActionsResponse(action)
 
 
@@ -67,6 +66,6 @@ def get_actions_server():
 
 if __name__ == '__main__':
     try:
-        main()
+        get_actions_server()
     except rospy.ROSInterruptException:
         pass

@@ -6,7 +6,6 @@ and other parameters
 
 import random
 
-
 class Environment:
     X_LENGTH = 0.30  # Total length of the x axis environment in meters
     Y_LENGTH = 0.44  # Total length of the y axis environment in meters
@@ -16,19 +15,6 @@ class Environment:
     PLACE_CARTESIAN_CENTER = [0, 0.25, 0.25]  # Cartesian center of the place box
 
     PICK_DISTANCE = 0.01  # Distance to the object when the robot is performing the pick and place action
-
-    ACTION_DISTANCE = 0.02
-
-    @staticmethod
-    def is_terminal_state(coordinates, object_gripped):
-        """
-        Function used to determine if the current state of the robot is terminal or not
-        :return: bool
-        """
-        def get_limits(length): return length / 2 - 0.01  # functon to calculate the box boundaries
-        x_limit_reached = abs(coordinates[0]) > get_limits(Environment.X_LENGTH)  # x boundary reached
-        y_limit_reached = abs(coordinates[1]) > get_limits(Environment.Y_LENGTH)  # y boundary reached
-        return x_limit_reached or y_limit_reached or object_gripped # If one or both or the boundaries are reached --> terminal state
 
     @staticmethod
     def generate_random_state():
@@ -53,3 +39,14 @@ class Environment:
             return Environment.X_LENGTH / 2, -Environment.Y_LENGTH / 2
         if corner == 'se' or corner == 'es':
             return -Environment.X_LENGTH / 2, -Environment.Y_LENGTH / 2
+
+    @staticmethod
+    def is_terminal_state(coordinates, object_gripped):
+        """
+        Function used to determine if the current state of the robot is terminal or not
+        :return: bool
+        """
+        def get_limits(length): return length / 2 - 0.01  # functon to calculate the box boundaries
+        x_limit_reached = abs(coordinates[0]) > get_limits(Environment.X_LENGTH)  # x boundary reached
+        y_limit_reached = abs(coordinates[1]) > get_limits(Environment.Y_LENGTH)  # y boundary reached
+        return x_limit_reached or y_limit_reached or object_gripped # If one or both or the boundaries are reached --> terminal state

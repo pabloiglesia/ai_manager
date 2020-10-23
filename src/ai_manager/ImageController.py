@@ -2,7 +2,11 @@
 
 # import cv2, cv_bridge
 import os
-from PIL import Image
+import rospy
+from PIL import Image as PILImage
+from sensor_msgs.msg import Image
+from cv2 import cv2
+import cv_bridge
 
 """
 This class is used to manage sensor_msgs Images.
@@ -10,36 +14,53 @@ This class is used to manage sensor_msgs Images.
 
 
 class ImageController:
-    def __init__(self, path=os.path.dirname(os.path.realpath(__file__)), capacity=64):
+    def __init__(self, path=os.path.dirname(os.path.realpath(__file__)), capacity=64, image_topic='/usb_cam/image_raw'):
         self.ind_saved_images = 0  # Index which will tell us the number of images that have been saved
-        # self.bridge = cv_brdgie.CvBridge()
-        self.path = "{}/images".format(path)  # Path where the images are going to be saved
+        self.bridge = cv_bridge.CvBridge()
+        self.success_path = "{}/success".format(path)  # Path where the images are going to be saved
+        self.fail_path = "{}/fail".format(path)  # Path where the images are going to be saved
         self.capacity = capacity  # Number of images that we want to be stored. It will work as a FIFO queue
+        self.image_topic = image_topic
 
         # If it does not exist, we create the path folder in our workspace
         try:
-            os.stat(self.path)
+            os.stat(self.success_path)
         except:
-            os.mkdir(self.path)
+            os.mkdir(self.success_path)
 
-    def record_image(self, msg):
+        # If it does not exist, we create the path folder in our workspace
+        try:
+            os.stat(self.fail_path)
+        except:
+            os.mkdir(self.fail_path)
+
+    def get_image(self):
+        msg = rospy.wait_for_message(self.image_topic, Image)
+
+        return self.to_cv2(msg), msg.width, msg.height
+
+    def record_image(self, msg, success):
         # img = self.to_cv2(msg)
         # cv2.imwrite('{}/img{:04d}.png'.format(self.path, self.indImage), img)
 
         size = (msg.width,msg.height)  # Image size
-        img = Image.frombytes('RGB', size, msg.data)  # sensor_msg to Image\
+        img = PILImage.frombytes('RGB', size, msg.data)  # sensor_msg to Image
 
-        img.save('{}/img{:04d}.png'.format(  # Saving image
-            self.path,  # Path
+        path = self.success_path if success else self.fail_path  # The path were we want to save the image is
+        # different depending on success info
+
+        image_path = '{}/img{:04d}.png'.format(  # Saving image
+            path,  # Path
             self.ind_saved_images % self.capacity)  # FIFO queue
-        )
+
+        img.save(image_path)
 
         self.ind_saved_images += 1  # Index increment
 
-    # def to_cv2(self, msg, display=False):
-    #     img = self.bridge.imgmsg_to_cv2(msg)
-    #     if display:
-    #         cv2.namedWindow("window", 1)
-    #         cv2.imshow("window", self.image)
-    #         cv2.waitKey(5)
-    #     return img
+    def to_cv2(self, msg, display=False):
+        img = self.bridge.imgmsg_to_cv2(msg)
+        if display:
+            cv2.namedWindow("window", 1)
+            cv2.imshow("window", self.image)
+            cv2.waitKey(5)
+        return img
