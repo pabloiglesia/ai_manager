@@ -6,6 +6,7 @@ gathers state information from another ROS topic.
 """
 
 import rospy
+import torch
 
 from RLAlgorithm import RLAlgorithm
 from Environment import Environment
@@ -13,7 +14,7 @@ from ai_manager.srv import GetActions, GetActionsResponse
 
 rospy.init_node('ai_manager', anonymous=True)  # ROS node initialization
 # Global Image Controller
-RL_ALGORITHM = RLAlgorithm(batch_size=10)
+RL_ALGORITHM = RLAlgorithm()
 
 
 def rl_algorithm(current_coordinates, object_gripped):
@@ -23,6 +24,7 @@ def rl_algorithm(current_coordinates, object_gripped):
     """
     previous_state = RL_ALGORITHM.current_state
     previous_action = RL_ALGORITHM.current_action
+    previous_action_idx = RL_ALGORITHM.current_action_idx
     RL_ALGORITHM.em.gather_image_state()  # Gathers current state image
     RL_ALGORITHM.current_state = RL_ALGORITHM.State(current_coordinates[0], current_coordinates[1], object_gripped,
                                                     RL_ALGORITHM.em.image_msg)
@@ -34,8 +36,14 @@ def rl_algorithm(current_coordinates, object_gripped):
         if RL_ALGORITHM.agent.current_step > 1:
 
             RL_ALGORITHM.memory.push(
-                RL_ALGORITHM.Experience(previous_state.image_raw, previous_action, RL_ALGORITHM.current_state.image_raw,
-                                        reward))
+                RL_ALGORITHM.Experience(
+                    previous_state.image_raw,
+                    torch.tensor([[previous_state.coordinate_x, previous_state.coordinate_y]]),
+                    torch.tensor([previous_action_idx], device=RL_ALGORITHM.device),
+                    RL_ALGORITHM.current_state.image_raw,
+                    torch.tensor([[RL_ALGORITHM.current_state.coordinate_x, RL_ALGORITHM.current_state.coordinate_y]]),
+                    torch.tensor([reward], device=RL_ALGORITHM.device)
+                ))
 
             rospy.loginfo("Step: {}, Episode: {}, Previous reward: {}, Previous action: {}".format(
                 RL_ALGORITHM.agent.current_step - 1,
