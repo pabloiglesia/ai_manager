@@ -14,52 +14,19 @@ from ai_manager.srv import GetActions, GetActionsResponse
 
 rospy.init_node('ai_manager', anonymous=True)  # ROS node initialization
 # Global Image Controller
-RL_ALGORITHM = RLAlgorithm()
-
-
-def rl_algorithm(current_coordinates, object_gripped):
-    """
-    This function implements a Reinforcement Learning algorithm to controll the UR3 robot.
-    :return: action taken
-    """
-    previous_state = RL_ALGORITHM.current_state
-    previous_action = RL_ALGORITHM.current_action
-    previous_action_idx = RL_ALGORITHM.current_action_idx
-    RL_ALGORITHM.em.gather_image_state()  # Gathers current state image
-    RL_ALGORITHM.current_state = RL_ALGORITHM.State(current_coordinates[0], current_coordinates[1], object_gripped,
-                                                    RL_ALGORITHM.em.image_msg)
-    reward = RL_ALGORITHM.em.calculate_reward()
-
-    action = RL_ALGORITHM.agent.select_action(RL_ALGORITHM.current_state, RL_ALGORITHM.policy_net)
-
-    if action != 'random_state':
-        if RL_ALGORITHM.agent.current_step > 1:
-
-            RL_ALGORITHM.memory.push(
-                RL_ALGORITHM.Experience(
-                    previous_state.image_raw,
-                    torch.tensor([[previous_state.coordinate_x, previous_state.coordinate_y]]),
-                    torch.tensor([previous_action_idx], device=RL_ALGORITHM.device),
-                    RL_ALGORITHM.current_state.image_raw,
-                    torch.tensor([[RL_ALGORITHM.current_state.coordinate_x, RL_ALGORITHM.current_state.coordinate_y]]),
-                    torch.tensor([reward], device=RL_ALGORITHM.device)
-                ))
-
-            rospy.loginfo("Step: {}, Episode: {}, Previous reward: {}, Previous action: {}".format(
-                RL_ALGORITHM.agent.current_step - 1,
-                RL_ALGORITHM.episode,
-                reward,
-                previous_action))
-
-        RL_ALGORITHM.train_net()
-
-    return action
+RL_ALGORITHM = RLAlgorithm(batch_size=10)
 
 
 def handle_get_actions(req):
+    """
+    Callback for each Request from the Robot
+    :param req: Robot requests has 3 elements: object_gripped, x and y elements
+    :return:
+    """
     object_gripped = req.object_gripped
     current_coordinates = [req.x, req.y]
-    action = rl_algorithm(current_coordinates, object_gripped)
+    # Next action is calculated from the current state
+    action = RL_ALGORITHM.next_training_step(current_coordinates, object_gripped)
 
     # RL_ALGORITHM.plot()
 
@@ -67,6 +34,11 @@ def handle_get_actions(req):
 
 
 def get_actions_server():
+    """
+    Service initialization to receive requests of actions from the robot.
+    Each time that a request is received, handle_get_actions function will be called
+    :return:
+    """
     s = rospy.Service('get_actions', GetActions, handle_get_actions)
     rospy.loginfo("Ready to send actions.")
     rospy.spin()
