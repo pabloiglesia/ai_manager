@@ -390,7 +390,7 @@ class RLAlgorithm:
         def can_provide_sample(self, batch_size):
             """
             returns a boolean telling whether or not we can sample from memory. Recall that the size of a sample
-            we’ll obtain from memory will be equal to the batch size we use to train our network.
+            we'll obtain from memory will be equal to the batch size we use to train our network.
             :param batch_size: Batch size to train the network
             :return: boolean telling whether or not we can sample from memory
             """
