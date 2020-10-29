@@ -15,6 +15,7 @@ class Environment:
     PLACE_CARTESIAN_CENTER = [0, 0.25, 0.25]  # Cartesian center of the place box
 
     PICK_DISTANCE = 0.01  # Distance to the object when the robot is performing the pick and place action
+    ACTION_DISTANCE = 0.01  # Distance to the object when the robot is performing the pick and place action
 
     ENV_BOUNDS_TOLERANCE = 0.01
 
