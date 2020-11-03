@@ -25,10 +25,10 @@ class Environment:
         Calculates random coordinates inside the Relative Environment defined
         :return:
         """
-        coordinate_x = random.uniform(-Environment.X_LENGTH + Environment.ENV_BOUNDS_TOLERANCE / 2,
-                                      Environment.X_LENGTH - Environment.ENV_BOUNDS_TOLERANCE / 2)
-        coordinate_y = random.uniform(-Environment.Y_LENGTH + Environment.ENV_BOUNDS_TOLERANCE / 2,
-                                      Environment.Y_LENGTH - Environment.ENV_BOUNDS_TOLERANCE / 2)
+        coordinate_x = random.uniform((-Environment.X_LENGTH + Environment.ENV_BOUNDS_TOLERANCE) / 2,
+                                      (Environment.X_LENGTH - Environment.ENV_BOUNDS_TOLERANCE) / 2)
+        coordinate_y = random.uniform((-Environment.Y_LENGTH + Environment.ENV_BOUNDS_TOLERANCE) / 2,
+                                      (Environment.Y_LENGTH - Environment.ENV_BOUNDS_TOLERANCE) / 2)
         return [coordinate_x, coordinate_y]
 
     @staticmethod
