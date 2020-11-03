@@ -7,7 +7,7 @@ and other parameters
 import random
 
 class Environment:
-    X_LENGTH = 0.30  # Total length of the x axis environment in meters
+    X_LENGTH = 0.26  # Total length of the x axis environment in meters
     Y_LENGTH = 0.44  # Total length of the y axis environment in meters
     CARTESIAN_CENTER = [-0.31899288568, -0.00357907370787, 0.226626573286]  # Cartesian center of the RL environment
     ANGULAR_CENTER = [2.7776150703430176, -1.5684941450702112, 1.299912452697754, -1.3755658308612269,
