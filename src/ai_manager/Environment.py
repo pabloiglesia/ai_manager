@@ -13,6 +13,7 @@ class Environment:
     ANGULAR_CENTER = [2.7776150703430176, -1.5684941450702112, 1.299912452697754, -1.3755658308612269,
                       -1.5422008673297327, -0.3250663916217249]  # Angular center of the RL environment
     PLACE_CARTESIAN_CENTER = [0, 0.25, 0.25]  # Cartesian center of the place box
+    ANGULAR_PICTURE_PLACE = [1.615200161933899, -1.235102955495016, 0.739865779876709, -1.2438910643206995, -1.5095704237567347, -0.06187755266298467]
 
     PICK_DISTANCE = 0.01  # Distance to the object when the robot is performing the pick and place action
     ACTION_DISTANCE = 0.01  # Distance to the object when the robot is performing the pick and place action
