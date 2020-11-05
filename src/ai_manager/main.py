@@ -14,7 +14,7 @@ from ai_manager.srv import GetActions, GetActionsResponse
 
 rospy.init_node('ai_manager', anonymous=True)  # ROS node initialization
 # Global Image Controller
-RL_ALGORITHM = RLAlgorithm(batch_size=10)
+RL_ALGORITHM = RLAlgorithm()
 
 
 def handle_get_actions(req):
