@@ -9,10 +9,10 @@ import random
 class Environment:
     X_LENGTH = 0.26  # Total length of the x axis environment in meters
     Y_LENGTH = 0.44  # Total length of the y axis environment in meters
-    CARTESIAN_CENTER = [-0.31899288568, -0.00357907370787, 0.226626573286]  # Cartesian center of the RL environment
+    CARTESIAN_CENTER = [-0.31899288568, -0.00357907370787, 0.376611799631]  # Cartesian center of the RL environment
     ANGULAR_CENTER = [2.7776150703430176, -1.5684941450702112, 1.299912452697754, -1.3755658308612269,
                       -1.5422008673297327, -0.3250663916217249]  # Angular center of the RL environment
-    PLACE_CARTESIAN_CENTER = [0, 0.25, 0.25]  # Cartesian center of the place box
+    PLACE_CARTESIAN_CENTER = [0, 0.25, CARTESIAN_CENTER[2]]  # Cartesian center of the place box
     ANGULAR_PICTURE_PLACE = [1.615200161933899, -1.235102955495016, 0.739865779876709, -1.2438910643206995, -1.5095704237567347, -0.06187755266298467]
 
     PICK_DISTANCE = 0.01  # Distance to the object when the robot is performing the pick and place action
