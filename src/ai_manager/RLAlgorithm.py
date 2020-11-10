@@ -75,6 +75,7 @@ class RLAlgorithm:
         self.num_episodes = num_episodes
 
         self.current_state = None  # Robot current state
+        self.previous_state = None  # Robot previous state
         self.current_action = None  # Robot current action
         self.current_action_idx = None  # Robot current action Index
         self.episode_done = False  # True if the episode has just ended
@@ -125,6 +126,7 @@ class RLAlgorithm:
 
         def select_action(self, state, policy_net):
             """
+            Method used to pick the following action of the robot
             Method used to pick the following action of the robot
             :param state: State RLAlgorithm namedtuple with all the information of the current state
             :param policy_net: DQN object used as policy network for the RL algorithm
@@ -193,6 +195,10 @@ class RLAlgorithm:
         # Called with either one element to determine next action, or a batch
         # during optimization. Returns tensor([[left0exp,right0exp]...]).
         def forward(self, image_raw, coordinates):
+            if torch.cuda.is_available():
+                image_raw = image_raw.cuda()
+                coordinates = coordinates.cuda()
+
             features1 = F.relu(self.bn1(self.conv1(image_raw)))
             features2 = F.relu(self.bn2(self.conv2(features1)))
             features3 = F.relu(self.bn3(self.conv3(features2)))
@@ -220,11 +226,12 @@ class RLAlgorithm:
             self.image_height = None  # Retrieved images height
             self.image_width = None  # Retrieved Images Width
             self.image_msg = None  # Current image ROS message
+            self.image_tensor = None  # Current image tensor
             self.image_tensor_size = None  # Size of the image after performing some transformations
             self.rl_manager = rl_manager
             self.gather_image_state()  # Retrieve initial state image
 
-        def calculate_reward(self):
+        def calculate_reward(self, previous_image):
             """
             Method used to calculate the reward of the previous action and whether it is a final state or not
             :return: reward, is_final_state
@@ -238,6 +245,7 @@ class RLAlgorithm:
                     self.rl_manager.episode_succeed.append(True)
                     rospy.loginfo("Episode ended: Object gripped!")
                     # TODO: Save image as success
+                    self.image_controller.record_image(previous_image, True)
                     return 10, True
                 else:  # Otherwise the robot has reached the limits of the environment
                     self.rl_manager.episode_succeed.append(False)
@@ -256,6 +264,7 @@ class RLAlgorithm:
                 #         return -10, True
                 if self.rl_manager.current_action == 'pick':  # if it is not the first action and action is pick
                     # TODO: Save image as failure
+                    self.image_controller.record_image(previous_image, False)
                     return -10, False
                 else:  # otherwise
                     return -1, False
@@ -265,9 +274,11 @@ class RLAlgorithm:
             This method gather information about the ur3 robot state by reading several ROS topics
             :param img_controller: class which will allow us to save sensor_msgs images
             """
-            rgb_array, self.image_width, self.image_height = self.image_controller.get_image()  # We retrieve state image
-            self.image_msg = self.get_processed_screen(rgb_array)
-            self.image_tensor_size = self.image_msg.size
+            previous_image = self.image_msg
+            self.image_msg, self.image_width, self.image_height = self.image_controller.get_image()  # We retrieve state image
+            self.image_tensor = self.get_processed_screen(self.image_msg)
+            self.image_tensor_size = self.image_tensor.size
+            return previous_image
 
         def get_processed_screen(self, image_raw):
             """
@@ -412,7 +423,16 @@ class RLAlgorithm:
         next_coordinates = torch.cat(batch.next_coordinates)
         is_final_state = torch.cat(batch.is_final_state)
 
-        return states, coordinates, actions, rewards, next_states, next_coordinates, is_final_state
+        if torch.cuda.is_available():
+            return states.cuda(), \
+                   coordinates.cuda(), \
+                   actions.cuda(), \
+                   rewards.cuda(), \
+                   next_states.cuda(), \
+                   next_coordinates.cuda(), \
+                   is_final_state.cuda()
+        else:
+            return states, coordinates, actions, rewards, next_states, next_coordinates, is_final_state
 
     @staticmethod
     def get_average_steps(period, values):
@@ -475,15 +495,15 @@ class RLAlgorithm:
         :param object_gripped: Boolean indicating whether or not ann object has been gripped
         :return: action taken
         """
-        previous_state = self.current_state  # Previous state information to store in the Replay Memory
+        self.previous_state = self.current_state  # Previous state information to store in the Replay Memory
         previous_action = self.current_action  # Previous action to store in the Replay Memory
         previous_action_idx = self.current_action_idx  # Previous action index to store in the Replay Memory
-        self.em.gather_image_state()  # Gathers current state image
+        previous_image = self.em.gather_image_state()  # Gathers current state image
         self.current_state = self.State(current_coordinates[0], current_coordinates[1], object_gripped,
-                                                        self.em.image_msg)  # Updates current_state
+                                        self.em.image_tensor)  # Updates current_state
 
         # Calculates previous action reward an establish whether the current state is terminal or not
-        previous_reward, is_final_state = self.em.calculate_reward()
+        previous_reward, is_final_state = self.em.calculate_reward(previous_image)
         action = self.agent.select_action(self.current_state,
                                                   self.policy_net)  # Calculates action
 
@@ -493,8 +513,8 @@ class RLAlgorithm:
         if previous_action != 'random_state' and self.agent.current_step > 1:
             self.memory.push(  # Pushing experience to Replay Memory
                 self.Experience(  # Using an Experience namedtuple
-                    previous_state.image_raw,  # Initial state image
-                    torch.tensor([[previous_state.coordinate_x, previous_state.coordinate_y]]),  # Initial coordinates
+                    self.previous_state.image_raw,  # Initial state image
+                    torch.tensor([[self.previous_state.coordinate_x, self.previous_state.coordinate_y]]),  # Initial coordinates
                     torch.tensor([previous_action_idx], device=self.device),  # Action taken
                     self.current_state.image_raw,  # Final state image
                     torch.tensor([[self.current_state.coordinate_x,

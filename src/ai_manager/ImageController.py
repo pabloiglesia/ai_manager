@@ -5,8 +5,9 @@ import os
 import rospy
 from PIL import Image as PILImage
 from sensor_msgs.msg import Image
+from numpy import array
 from cv2 import cv2
-import cv_bridge
+# import cv_bridge
 
 """
 This class is used to manage sensor_msgs Images.
@@ -16,7 +17,7 @@ This class is used to manage sensor_msgs Images.
 class ImageController:
     def __init__(self, path=os.path.dirname(os.path.realpath(__file__)), capacity=64, image_topic='/usb_cam/image_raw'):
         self.ind_saved_images = 0  # Index which will tell us the number of images that have been saved
-        self.bridge = cv_bridge.CvBridge()
+        # self.bridge = cv_bridge.CvBridge()
         self.success_path = "{}/success".format(path)  # Path where the images are going to be saved
         self.fail_path = "{}/fail".format(path)  # Path where the images are going to be saved
         self.capacity = capacity  # Number of images that we want to be stored. It will work as a FIFO queue
@@ -37,15 +38,12 @@ class ImageController:
     def get_image(self):
         msg = rospy.wait_for_message(self.image_topic, Image)
 
-        return self.to_cv2(msg), msg.width, msg.height
+        return self.to_pil(msg), msg.width, msg.height
 
-    def record_image(self, msg, success):
+    def record_image(self, array_img, success):
         # img = self.to_cv2(msg)
         # cv2.imwrite('{}/img{:04d}.png'.format(self.path, self.indImage), img)
-
-        size = (msg.width,msg.height)  # Image size
-        img = PILImage.frombytes('RGB', size, msg.data)  # sensor_msg to Image
-
+        img = PILImage.fromarray(array_img)
         path = self.success_path if success else self.fail_path  # The path were we want to save the image is
         # different depending on success info
 
@@ -57,10 +55,12 @@ class ImageController:
 
         self.ind_saved_images += 1  # Index increment
 
-    def to_cv2(self, msg, display=False):
-        img = self.bridge.imgmsg_to_cv2(msg)
-        if display:
-            cv2.namedWindow("window", 1)
-            cv2.imshow("window", self.image)
-            cv2.waitKey(5)
-        return img
+    def to_pil(self, msg, display=False):
+        # img = self.bridge.imgmsg_to_cv2(msg)
+        # if display:
+        #     cv2.namedWindow("window", 1)
+        #     cv2.imshow("window", self.image)
+        #     cv2.waitKey(5)
+        size = (msg.width, msg.height)  # Image size
+        img = PILImage.frombytes('RGB', size, msg.data)  # sensor_msg to Image
+        return array(img)
