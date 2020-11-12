@@ -64,7 +64,7 @@ class RLAlgorithm:
     """
 
     def __init__(self, batch_size=32, gamma=0.999, eps_start=1, eps_end=0.01, eps_decay=0.001, target_update=10,
-                 memory_size=10000, lr=0.001, num_episodes=1000):
+                 memory_size=2000, lr=0.001, num_episodes=1000):
         """
 
         :param batch_size: Size of the batch used to train the network in every step
@@ -216,14 +216,13 @@ class RLAlgorithm:
         current state of the robot.
         """
 
-        def __init__(self, rl_manager):
+        def __init__(self, rl_manager, image_size=256):
             """
             Initialization of an object
             :param rl_manager: RLAlgorithm object
             """
             self.device = rl_manager.device  # Torch device
-            self.image_controller = ImageController(
-                capacity=rl_manager.memory_size)  # ImageController object to manage images
+            self.image_controller = ImageController()  # ImageController object to manage images
             self.actions = ['north', 'south', 'east', 'west', 'pick']  # Possible actions of the objects
             self.image_height = None  # Retrieved images height
             self.image_width = None  # Retrieved Images Width
@@ -231,6 +230,7 @@ class RLAlgorithm:
             self.image_tensor = None  # Current image tensor
             self.image_tensor_size = None  # Size of the image after performing some transformations
             self.rl_manager = rl_manager
+            self.image_size = image_size
             self.gather_image_state()  # Retrieve initial state image
 
         def calculate_reward(self, previous_image):
@@ -288,11 +288,11 @@ class RLAlgorithm:
             :param image_raw: Image
             :return:
             """
-            resize = T.Compose([T.ToPILImage(),
-                                T.Resize(40, interpolation=Image.CUBIC),
+            resize = T.Compose([T.Resize(self.image_size, interpolation=Image.CUBIC),
                                 T.ToTensor()])
-            image_raw = torch.from_numpy(image_raw)
-            return resize(image_raw).unsqueeze(0).to(self.device)
+            processed_screen = resize(image_raw).unsqueeze(0).to(self.device)
+
+            return processed_screen
 
         def num_actions_available(self):
             """

@@ -2,11 +2,11 @@
 
 # import cv2, cv_bridge
 import os
+import time
+
 import rospy
 from PIL import Image as PILImage
 from sensor_msgs.msg import Image
-from numpy import array
-from cv2 import cv2
 # import cv_bridge
 
 """
@@ -15,12 +15,11 @@ This class is used to manage sensor_msgs Images.
 
 
 class ImageController:
-    def __init__(self, path=os.path.dirname(os.path.realpath(__file__)), capacity=64, image_topic='/usb_cam/image_raw'):
+    def __init__(self, path=os.path.dirname(os.path.realpath(__file__)), image_topic='/usb_cam/image_raw'):
         self.ind_saved_images = 0  # Index which will tell us the number of images that have been saved
         # self.bridge = cv_bridge.CvBridge()
         self.success_path = "{}/success".format(path)  # Path where the images are going to be saved
         self.fail_path = "{}/fail".format(path)  # Path where the images are going to be saved
-        self.capacity = capacity  # Number of images that we want to be stored. It will work as a FIFO queue
         self.image_topic = image_topic
 
         # If it does not exist, we create the path folder in our workspace
@@ -40,16 +39,16 @@ class ImageController:
 
         return self.to_pil(msg), msg.width, msg.height
 
-    def record_image(self, array_img, success):
+    def record_image(self, img, success):
         # img = self.to_cv2(msg)
         # cv2.imwrite('{}/img{:04d}.png'.format(self.path, self.indImage), img)
-        img = PILImage.fromarray(array_img)
+        # img = PILImage.fromarray(array_img)
         path = self.success_path if success else self.fail_path  # The path were we want to save the image is
         # different depending on success info
 
-        image_path = '{}/img{:04d}.png'.format(  # Saving image
+        image_path = '{}/img{}.png'.format(  # Saving image
             path,  # Path
-            self.ind_saved_images % self.capacity)  # FIFO queue
+            time.time())  # FIFO queue
 
         img.save(image_path)
 
@@ -63,4 +62,4 @@ class ImageController:
         #     cv2.waitKey(5)
         size = (msg.width, msg.height)  # Image size
         img = PILImage.frombytes('RGB', size, msg.data)  # sensor_msg to Image
-        return array(img)
+        return img
