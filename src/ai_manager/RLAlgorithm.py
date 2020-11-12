@@ -1,6 +1,9 @@
 # coding=utf-8
 import math
 import random
+import os
+import errno
+import sys
 from collections import namedtuple
 
 import matplotlib
@@ -18,6 +21,18 @@ from ImageController import ImageController
 
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython: from IPython import display
+
+import pickle
+
+State = namedtuple(  # State information namedtuple
+    'State',
+    ('coordinate_x', 'coordinate_y', 'object_gripped', 'image_raw')
+)
+
+Experience = namedtuple(  # Replay Memory Experience namedtuple
+    'Experience',
+    ('state', 'coordinates', 'action', 'next_state', 'next_coordinates', 'reward', 'is_final_state')
+)
 
 
 class RLAlgorithm:
@@ -83,15 +98,6 @@ class RLAlgorithm:
         self.episode_steps = [0]  # Steps taken by each episode
         self.episode_succeed = []  # Array that stores whether each episode has ended successfully or not
 
-        self.State = namedtuple(  # State information namedtuple
-            'State',
-            ('coordinate_x', 'coordinate_y', 'object_gripped', 'image_raw')
-        )
-        self.Experience = namedtuple(  # Replay Memory Experience namedtuple
-            'Experience',
-            ('state', 'coordinates', 'action', 'next_state', 'next_coordinates', 'reward', 'is_final_state')
-        )
-
         # This tells PyTorch to use a GPU if its available, otherwise use the CPU
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Torch devide
         self.em = self.EnvManager(self)  # Robot Environment Manager
@@ -149,7 +155,7 @@ class RLAlgorithm:
                 else:  # With a probability = (1 - rate) we Explote the information we already have
                     with torch.no_grad():  # We calculate the action using the Policy Q Network
                         action = policy_net(state.image_raw, torch.tensor(
-                            [[state.coordinate_x, state.coordinate_y]])).argmax(dim=1).to(self.device)  # exploit
+                            [[state.coordinate_x, state.coordinate_y]], device=self.device)).argmax(dim=1).to(self.device)  # exploit
 
                 self.rl_algorithm.current_action = self.rl_algorithm.em.actions[action]
                 self.rl_algorithm.current_action_idx = action
@@ -195,10 +201,6 @@ class RLAlgorithm:
         # Called with either one element to determine next action, or a batch
         # during optimization. Returns tensor([[left0exp,right0exp]...]).
         def forward(self, image_raw, coordinates):
-            if torch.cuda.is_available():
-                image_raw = image_raw.cuda()
-                coordinates = coordinates.cuda()
-
             features1 = F.relu(self.bn1(self.conv1(image_raw)))
             features2 = F.relu(self.bn2(self.conv2(features1)))
             features3 = F.relu(self.bn3(self.conv3(features2)))
@@ -369,6 +371,7 @@ class RLAlgorithm:
         """
         Class used to create a Replay Memory for the RL algorithm
         """
+
         def __init__(self, capacity):
             """
             Initialization of ReplayMemory
@@ -413,7 +416,7 @@ class RLAlgorithm:
         :param experiences: Batch of Experienc objects
         :return: A tuple of each element of a Experience namedtuple
         """
-        batch = self.Experience(*zip(*experiences))
+        batch = Experience(*zip(*experiences))
 
         states = torch.cat(batch.state)
         actions = torch.cat(batch.action)
@@ -423,16 +426,7 @@ class RLAlgorithm:
         next_coordinates = torch.cat(batch.next_coordinates)
         is_final_state = torch.cat(batch.is_final_state)
 
-        if torch.cuda.is_available():
-            return states.cuda(), \
-                   coordinates.cuda(), \
-                   actions.cuda(), \
-                   rewards.cuda(), \
-                   next_states.cuda(), \
-                   next_coordinates.cuda(), \
-                   is_final_state.cuda()
-        else:
-            return states, coordinates, actions, rewards, next_states, next_coordinates, is_final_state
+        return states, coordinates, actions, rewards, next_states, next_coordinates, is_final_state
 
     @staticmethod
     def get_average_steps(period, values):
@@ -453,6 +447,35 @@ class RLAlgorithm:
         plt.plot(success_percentage)
         plt.pause(0.001)
         if is_ipython: display.clear_output(wait=True)
+
+    def save_training(self, filename='trainings/rl_algorithm.pkl'):
+        rospy.loginfo("Saving training...")
+        current_path = os.path.dirname(os.path.realpath(__file__))
+        filename = os.path.join(current_path, filename)
+        if not os.path.exists(os.path.dirname(filename)):
+            try:
+                os.makedirs(os.path.dirname(filename))
+            except OSError as exc:  # Guard against race condition
+                if exc.errno != errno.EEXIST:
+                    raise
+        with open(filename, 'wb+') as output:  # Overwrites any existing file.
+            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+        rospy.loginfo("Training saved!")
+
+    @staticmethod
+    def recover_training(filename='trainings/rl_algorithm.pkl'):
+        current_path = os.path.dirname(os.path.realpath(__file__))
+        filename = os.path.join(current_path, filename)
+
+        try:
+            with open(filename, 'rb') as input:
+                rl_algorithm = pickle.load(input)
+                rospy.loginfo("Training recovered. Next step will be step number {}"
+                              .format(rl_algorithm.agent.current_step))
+                return rl_algorithm
+        except IOError:
+            rospy.loginfo("There is no Training saved. New object has been created")
+            return RLAlgorithm()
 
     def train_net(self):
         """
@@ -499,26 +522,29 @@ class RLAlgorithm:
         previous_action = self.current_action  # Previous action to store in the Replay Memory
         previous_action_idx = self.current_action_idx  # Previous action index to store in the Replay Memory
         previous_image = self.em.gather_image_state()  # Gathers current state image
-        self.current_state = self.State(current_coordinates[0], current_coordinates[1], object_gripped,
-                                        self.em.image_tensor)  # Updates current_state
+
+        self.current_state = State(current_coordinates[0], current_coordinates[1], object_gripped,
+                                   self.em.image_tensor)  # Updates current_state
 
         # Calculates previous action reward an establish whether the current state is terminal or not
         previous_reward, is_final_state = self.em.calculate_reward(previous_image)
         action = self.agent.select_action(self.current_state,
-                                                  self.policy_net)  # Calculates action
+                                          self.policy_net)  # Calculates action
 
         # Random_state actions are used just to initialize the environment to a random position, so it is not taken into
         # account while storing state information in the Replay Memory.
         # If previous action was a random_state and it is not the first step of the training
         if previous_action != 'random_state' and self.agent.current_step > 1:
             self.memory.push(  # Pushing experience to Replay Memory
-                self.Experience(  # Using an Experience namedtuple
+                Experience(  # Using an Experience namedtuple
                     self.previous_state.image_raw,  # Initial state image
-                    torch.tensor([[self.previous_state.coordinate_x, self.previous_state.coordinate_y]]),  # Initial coordinates
+                    torch.tensor([[self.previous_state.coordinate_x, self.previous_state.coordinate_y]],
+                                 device=self.device),  # Initial coordinates
                     torch.tensor([previous_action_idx], device=self.device),  # Action taken
                     self.current_state.image_raw,  # Final state image
                     torch.tensor([[self.current_state.coordinate_x,
-                                   self.current_state.coordinate_y]]),  # Final coordinates
+                                   self.current_state.coordinate_y]],
+                                 device=self.device),  # Final coordinates
                     torch.tensor([previous_reward], device=self.device),  # Action reward
                     torch.tensor([is_final_state], device=self.device)  # Episode ended
                 ))

@@ -14,7 +14,7 @@ from ai_manager.srv import GetActions, GetActionsResponse
 
 rospy.init_node('ai_manager', anonymous=True)  # ROS node initialization
 # Global Image Controller
-RL_ALGORITHM = RLAlgorithm()
+RL_ALGORITHM = RLAlgorithm.recover_training()
 
 
 def handle_get_actions(req):
@@ -42,6 +42,10 @@ def get_actions_server():
     s = rospy.Service('get_actions', GetActions, handle_get_actions)
     rospy.loginfo("Ready to send actions.")
     rospy.spin()
+    rospy.on_shutdown(save_training)
+
+def save_training():
+    RL_ALGORITHM.save_training()
 
 
 if __name__ == '__main__':
