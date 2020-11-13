@@ -96,6 +96,8 @@ class RLAlgorithm:
         self.episode_done = False  # True if the episode has just ended
         self.episode = 0  # Number of episode
         self.episode_steps = [0]  # Steps taken by each episode
+        self.episode_picks = [0]  # Pick actions tried by each episode
+        self.episode_total_reward = [0]  # Total reward of each episode
         self.episode_succeed = []  # Array that stores whether each episode has ended successfully or not
 
         # This tells PyTorch to use a GPU if its available, otherwise use the CPU
@@ -142,6 +144,8 @@ class RLAlgorithm:
                 self.rl_algorithm.episode_done = False  # Put the variable episode_done back to False
                 self.rl_algorithm.episode += 1  # Increase the episode counter
                 self.rl_algorithm.episode_steps.append(0)  # Append a new value to the next episode step counter
+                self.rl_algorithm.episode_total_reward.append(0)  # Append a new value to the next episode total reward counter
+
                 # TODO: if self.self.episode >= self.self.num_episodes:
                 self.rl_algorithm.current_action = 'random_state'  # Return random_state to reset the robot position
                 self.rl_algorithm.current_action_idx = None
@@ -216,12 +220,12 @@ class RLAlgorithm:
         current state of the robot.
         """
 
-        def __init__(self, rl_manager, image_size=256):
+        def __init__(self, rl_algorithm, image_size=256):
             """
             Initialization of an object
             :param rl_manager: RLAlgorithm object
             """
-            self.device = rl_manager.device  # Torch device
+            self.device = rl_algorithm.device  # Torch device
             self.image_controller = ImageController()  # ImageController object to manage images
             self.actions = ['north', 'south', 'east', 'west', 'pick']  # Possible actions of the objects
             self.image_height = None  # Retrieved images height
@@ -229,7 +233,7 @@ class RLAlgorithm:
             self.image_msg = None  # Current image ROS message
             self.image_tensor = None  # Current image tensor
             self.image_tensor_size = None  # Size of the image after performing some transformations
-            self.rl_manager = rl_manager
+            self.rl_algorithm = rl_algorithm
             self.image_size = image_size
             self.gather_image_state()  # Retrieve initial state image
 
@@ -238,38 +242,36 @@ class RLAlgorithm:
             Method used to calculate the reward of the previous action and whether it is a final state or not
             :return: reward, is_final_state
             """
-            current_coordinates = [self.rl_manager.current_state.coordinate_x,
-                                   self.rl_manager.current_state.coordinate_y]  # Retrieve robot's current coordinates
-            object_gripped = self.rl_manager.current_state.object_gripped  # Retrieve if the robot has an object gripped
+            current_coordinates = [self.rl_algorithm.current_state.coordinate_x,
+                                   self.rl_algorithm.current_state.coordinate_y]  # Retrieve robot's current coordinates
+            object_gripped = self.rl_algorithm.current_state.object_gripped  # Retrieve if the robot has an object gripped
             if Environment.is_terminal_state(current_coordinates, object_gripped):  # If is a terminal state
-                self.rl_manager.episode_done = True  # Set the episode_done variable to True to endup the episode
+                self.rl_algorithm.episode_done = True  # Set the episode_done variable to True to endup the episode
                 if object_gripped:  # If object_gripped is True, the episode has ended successfully
-                    self.rl_manager.episode_succeed.append(True)
+                    reward = 10
+                    self.rl_algorithm.episode_total_reward[-1] += reward
+                    self.rl_algorithm.episode_succeed.append(True)  # Saving episode successful statistic
+                    self.rl_algorithm.episode_picks[-1] += 1  # Increase of the statistics cpunter
                     rospy.loginfo("Episode ended: Object gripped!")
-                    # TODO: Save image as success
-                    self.image_controller.record_image(previous_image, True)
-                    return 10, True
+                    self.image_controller.record_image(previous_image, True)  # Saving the falure state image
+                    return reward, True
                 else:  # Otherwise the robot has reached the limits of the environment
-                    self.rl_manager.episode_succeed.append(False)
+                    reward = -10
+                    self.rl_algorithm.episode_total_reward[-1] += reward
+                    self.rl_algorithm.episode_succeed.append(False)  # Saving episode failure statistic
                     rospy.loginfo("Episode ended: Environment limits reached!")
-                    return -10, True
+                    return reward, True
             else:  # If it is not a Terminal State
-                # In the main workflow, the program calculates the reward of an action while it is calculating the next
-                # action. It is a problem because when an episode is ended, the next action should always be a
-                # random_state to reset the environment and random_state actions should never have a reward. To solve
-                # this, no reward is given when a terminal state is reached and this rewards are taken into account
-                # on the first calculated action of the next episode
-                # if self.rl_manager.agent.current_step > 0 and self.rl_manager.episode_steps[-1] == 0:
-                #     if self.rl_manager.episode_succeed[-1]:  # if it is the first action and last episode succeed
-                #         return 10, True
-                #     else:  # if it is the first action but last episode did not succeed
-                #         return -10, True
-                if self.rl_manager.current_action == 'pick':  # if it is not the first action and action is pick
-                    # TODO: Save image as failure
-                    self.image_controller.record_image(previous_image, False)
-                    return -10, False
+                if self.rl_algorithm.current_action == 'pick':  # if it is not the first action and action is pick
+                    reward = -10
+                    self.image_controller.record_image(previous_image, False)  # Saving the falure state image
+                    self.rl_algorithm.episode_picks[-1] += 1  # Increase of the statistics cpunter
+                    self.rl_algorithm.episode_total_reward[-1] += reward
+                    return reward, False
                 else:  # otherwise
-                    return -1, False
+                    reward = -1
+                    self.rl_algorithm.episode_total_reward[-1] += reward
+                    return reward, False
 
         def gather_image_state(self):
             """
