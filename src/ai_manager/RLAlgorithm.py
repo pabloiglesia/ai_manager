@@ -94,11 +94,6 @@ class RLAlgorithm:
         self.current_action = None  # Robot current action
         self.current_action_idx = None  # Robot current action Index
         self.episode_done = False  # True if the episode has just ended
-        self.episode = 0  # Number of episode
-        self.episode_steps = [0]  # Steps taken by each episode
-        self.episode_picks = [0]  # Pick actions tried by each episode
-        self.episode_total_reward = [0]  # Total reward of each episode
-        self.episode_succeed = []  # Array that stores whether each episode has ended successfully or not
 
         # This tells PyTorch to use a GPU if its available, otherwise use the CPU
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Torch devide
@@ -106,6 +101,7 @@ class RLAlgorithm:
         self.strategy = self.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay)  # Greede Strategy
         self.agent = self.Agent(self)  # RL Agent
         self.memory = self.ReplayMemory(self.memory_size)  # Replay Memory
+        self.statistics = self.TrainingStatistics()
 
         self.policy_net = self.DQN(self.em.image_tensor_size,
                                    self.em.num_actions_available()).to(self.device)  # Policy Q Network
@@ -126,7 +122,6 @@ class RLAlgorithm:
 
             :param self: RLAlgorithm object
             """
-            self.current_step = 0  # Current step since the beginning of training
             self.strategy = rl_algorithm.strategy  # Greedy Strategy
             self.num_actions = rl_algorithm.em.num_actions_available()  # Num of actions available
             self.device = rl_algorithm.device  # Torch device
@@ -142,20 +137,18 @@ class RLAlgorithm:
             """
             if self.rl_algorithm.episode_done:  # If the episode has just ended we reset the robot environment
                 self.rl_algorithm.episode_done = False  # Put the variable episode_done back to False
-                self.rl_algorithm.episode += 1  # Increase the episode counter
-                self.rl_algorithm.episode_steps.append(0)  # Append a new value to the next episode step counter
-                self.rl_algorithm.episode_total_reward.append(0)  # Append a new value to the next episode total reward counter
+                self.rl_algorithm.statistics.new_episode()
 
                 # TODO: if self.self.episode >= self.self.num_episodes:
                 self.rl_algorithm.current_action = 'random_state'  # Return random_state to reset the robot position
                 self.rl_algorithm.current_action_idx = None
             else:
-                rate = self.strategy.get_exploration_rate(self.current_step)  # We get the current epsilon value
-                self.current_step += 1  # Increase the step counter
-                self.rl_algorithm.episode_steps[self.rl_algorithm.episode] += 1  # Increase current episode step counter
+                rate = self.strategy.get_exploration_rate(self.rl_algorithm.statistics.current_step)  # We get the current epsilon value
+                self.rl_algorithm.statistics.new_step()  # Add new steps statistics
 
                 if rate > random.random():  # With a probability = rate we choose a random action (Explore environment)
                     action = random.randrange(self.num_actions)
+                    self.rl_algorithm.episode_random_actions[-1] += 1  # Recolecting statistics
                 else:  # With a probability = (1 - rate) we Explote the information we already have
                     with torch.no_grad():  # We calculate the action using the Policy Q Network
                         action = policy_net(state.image_raw, torch.tensor(
@@ -412,6 +405,31 @@ class RLAlgorithm:
             """
             return len(self.memory) >= batch_size
 
+    class TrainingStatistics:
+        """
+        Class were all the statistics of the training will be stored.
+        """
+
+        def __init__(self):
+            self.current_step = 0  # Current step since the beginning of training
+            self.episode = 0  # Number of episode
+            self.episode_steps = [0]  # Steps taken by each episode
+            self.episode_picks = [0]  # Pick actions tried by each episode
+            self.episode_total_reward = [0]  # Total reward of each episode
+            self.episode_random_actions = [0]  # Total reward of each episode
+            self.episode_succeed = []  # Array that stores whether each episode has ended successfully or not
+
+        def new_episode(self):
+            self.episode += 1  # Increase the episode counter
+            self.episode_steps.append(0)  # Append a new value to the next episode step counter
+            self.episode_picks.append(0)  # Append a new value to the amount of picks counter
+            self.episode_total_reward.append(0)  # Append a new value to the next episode total reward counter
+            self.episode_random_actions.append(0)  # Append a new value to the next episode random actions counter
+
+        def new_step(self):
+            self.current_step += 1  # Increase step
+            self.episode_steps[-1] += 1  # Increase current episode step counter
+
     def extract_tensors(self, experiences):
         """
         Converts a batch of Experiences to Experience of batches and returns all the elements separately.
@@ -473,7 +491,7 @@ class RLAlgorithm:
             with open(filename, 'rb') as input:
                 rl_algorithm = pickle.load(input)
                 rospy.loginfo("Training recovered. Next step will be step number {}"
-                              .format(rl_algorithm.agent.current_step))
+                              .format(rl_algorithm.statistics.current_step))
                 return rl_algorithm
         except IOError:
             rospy.loginfo("There is no Training saved. New object has been created")
@@ -507,7 +525,7 @@ class RLAlgorithm:
             # policy net
             self.optimizer.step()  # Updates the weights and biases with the gradients computed
 
-        if self.episode % self.target_update == 0:  # If target_net has to be updated in this episode
+        if self.statistics.episode % self.target_update == 0:  # If target_net has to be updated in this episode
             self.target_net.load_state_dict(self.policy_net.state_dict())  # Target net is updated
 
     def next_training_step(self, current_coordinates, object_gripped):
@@ -536,7 +554,7 @@ class RLAlgorithm:
         # Random_state actions are used just to initialize the environment to a random position, so it is not taken into
         # account while storing state information in the Replay Memory.
         # If previous action was a random_state and it is not the first step of the training
-        if previous_action != 'random_state' and self.agent.current_step > 1:
+        if previous_action != 'random_state' and self.statistics.current_step > 1:
             self.memory.push(  # Pushing experience to Replay Memory
                 Experience(  # Using an Experience namedtuple
                     self.previous_state.image_raw,  # Initial state image
@@ -553,8 +571,8 @@ class RLAlgorithm:
 
             # Logging information
             rospy.loginfo("Step: {}, Episode: {}, Previous reward: {}, Previous action: {}".format(
-                self.agent.current_step - 1,
-                self.episode,
+                self.statistics.current_step - 1,
+                self.statistics.episode,
                 previous_reward,
                 previous_action))
 
