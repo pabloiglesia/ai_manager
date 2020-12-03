@@ -101,7 +101,7 @@ class RLAlgorithm:
         self.strategy = self.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay)  # Greede Strategy
         self.agent = self.Agent(self)  # RL Agent
         self.memory = self.ReplayMemory(self.memory_size)  # Replay Memory
-        self.statistics = self.TrainingStatistics()
+        self.statistics = self.TrainingStatistics()  # Training statistics
 
         self.policy_net = self.DQN(self.em.image_tensor_size,
                                    self.em.num_actions_available()).to(self.device)  # Policy Q Network
@@ -148,7 +148,7 @@ class RLAlgorithm:
 
                 if rate > random.random():  # With a probability = rate we choose a random action (Explore environment)
                     action = random.randrange(self.num_actions)
-                    self.rl_algorithm.episode_random_actions[-1] += 1  # Recolecting statistics
+                    self.rl_algorithm.statistics.random_action()  # Recolecting statistics
                 else:  # With a probability = (1 - rate) we Explote the information we already have
                     with torch.no_grad():  # We calculate the action using the Policy Q Network
                         action = policy_net(state.image_raw, torch.tensor(
@@ -239,32 +239,29 @@ class RLAlgorithm:
                                    self.rl_algorithm.current_state.coordinate_y]  # Retrieve robot's current coordinates
             object_gripped = self.rl_algorithm.current_state.object_gripped  # Retrieve if the robot has an object gripped
             if Environment.is_terminal_state(current_coordinates, object_gripped):  # If is a terminal state
-                self.rl_algorithm.episode_done = True  # Set the episode_done variable to True to endup the episode
+                self.rl_algorithm.episode_done = True  # Set the episode_done variable to True to end up the episode
+                episode_done = True
                 if object_gripped:  # If object_gripped is True, the episode has ended successfully
                     reward = 10
-                    self.rl_algorithm.episode_total_reward[-1] += reward
-                    self.rl_algorithm.episode_succeed.append(True)  # Saving episode successful statistic
-                    self.rl_algorithm.episode_picks[-1] += 1  # Increase of the statistics cpunter
+                    self.rl_algorithm.statistics.add_succesful_episode(True)  # Saving episode successful statistic
+                    self.rl_algorithm.statistics.increment_picks()    # Increase of the statistics cpunter
                     rospy.loginfo("Episode ended: Object gripped!")
                     self.image_controller.record_image(previous_image, True)  # Saving the falure state image
-                    return reward, True
                 else:  # Otherwise the robot has reached the limits of the environment
                     reward = -10
-                    self.rl_algorithm.episode_total_reward[-1] += reward
-                    self.rl_algorithm.episode_succeed.append(False)  # Saving episode failure statistic
+                    self.rl_algorithm.statistics.add_succesful_episode(False)  # Saving episode failure statistic
                     rospy.loginfo("Episode ended: Environment limits reached!")
-                    return reward, True
             else:  # If it is not a Terminal State
+                episode_done = True
                 if self.rl_algorithm.current_action == 'pick':  # if it is not the first action and action is pick
                     reward = -10
                     self.image_controller.record_image(previous_image, False)  # Saving the falure state image
-                    self.rl_algorithm.episode_picks[-1] += 1  # Increase of the statistics cpunter
-                    self.rl_algorithm.episode_total_reward[-1] += reward
-                    return reward, False
+                    self.rl_algorithm.statistics.increment_picks()  # Increase of the statistics counter
                 else:  # otherwise
                     reward = -1
-                    self.rl_algorithm.episode_total_reward[-1] += reward
-                    return reward, False
+
+            self.rl_algorithm.statistics.add_reward(reward)  # Add reward to the algorithm statistics
+            return reward, episode_done
 
         def gather_image_state(self):
             """
@@ -430,6 +427,18 @@ class RLAlgorithm:
             self.current_step += 1  # Increase step
             self.episode_steps[-1] += 1  # Increase current episode step counter
 
+        def increment_picks(self):
+            self.episode_picks[-1] += 1  # Increase of the statistics counter
+
+        def add_reward(self, reward):
+            self.episode_total_reward[-1] += reward
+
+        def add_succesful_episode(self, successful):
+            self.episode_succeed.append(successful)
+
+        def random_action(self):
+            self.episode_random_actions[-1] += 1
+
     def extract_tensors(self, experiences):
         """
         Converts a batch of Experiences to Experience of batches and returns all the elements separately.
@@ -454,7 +463,7 @@ class RLAlgorithm:
         return sum(values) / len(values)
 
     def plot(self, average_steps_period=20):
-        int_values = [1 if value else 0 for value in self.episode_succeed]
+        int_values = [1 if value else 0 for value in self.statistics.episode_succeed]
 
         plt.figure(2)
         plt.clf()
@@ -463,7 +472,7 @@ class RLAlgorithm:
         plt.ylabel('Duration')
         plt.plot(int_values)
 
-        success_percentage = self.get_average_steps(average_steps_period, self.episode_steps)
+        success_percentage = self.get_average_steps(average_steps_period, self.statistics.episode_steps)
         plt.plot(success_percentage)
         plt.pause(0.001)
         if is_ipython: display.clear_output(wait=True)
