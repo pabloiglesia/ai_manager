@@ -242,7 +242,7 @@ class RLAlgorithm:
                 self.rl_algorithm.episode_done = True  # Set the episode_done variable to True to end up the episode
                 episode_done = True
                 if object_gripped:  # If object_gripped is True, the episode has ended successfully
-                    reward = 10
+                    reward = 100
                     self.rl_algorithm.statistics.add_succesful_episode(True)  # Saving episode successful statistic
                     self.rl_algorithm.statistics.increment_picks()    # Increase of the statistics cpunter
                     rospy.loginfo("Episode ended: Object gripped!")
@@ -478,17 +478,32 @@ class RLAlgorithm:
         if is_ipython: display.clear_output(wait=True)
 
     def save_training(self, filename='trainings/rl_algorithm.pkl'):
+
+        def create_if_not_exist(filename):
+            current_path = os.path.dirname(os.path.realpath(__file__))
+            filename = os.path.join(current_path, filename)
+            if not os.path.exists(os.path.dirname(filename)):
+                try:
+                    os.makedirs(os.path.dirname(filename))
+                except OSError as exc:  # Guard against race condition
+                    if exc.errno != errno.EEXIST:
+                        raise
+            return filename
+
         rospy.loginfo("Saving training...")
-        current_path = os.path.dirname(os.path.realpath(__file__))
-        filename = os.path.join(current_path, filename)
-        if not os.path.exists(os.path.dirname(filename)):
-            try:
-                os.makedirs(os.path.dirname(filename))
-            except OSError as exc:  # Guard against race condition
-                if exc.errno != errno.EEXIST:
-                    raise
+
+        filename = create_if_not_exist(filename)
+
         with open(filename, 'wb+') as output:  # Overwrites any existing file.
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+
+        rospy.loginfo("Saving Statistics...")
+
+        statistics_filename = "{}_stats.pkl".format(filename.split('.pkl')[0])
+        statistics_filename = create_if_not_exist(statistics_filename)
+        with open(statistics_filename, 'wb+') as output:  # Overwrites any existing file.
+            pickle.dump(self.statistics, output, pickle.HIGHEST_PROTOCOL)
+
         rospy.loginfo("Training saved!")
 
     @staticmethod
