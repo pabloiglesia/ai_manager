@@ -514,8 +514,8 @@ class RLAlgorithm:
         try:
             with open(filename, 'rb') as input:
                 rl_algorithm = pickle.load(input)
-                rospy.loginfo("Training recovered. Next step will be step number {}"
-                              .format(rl_algorithm.statistics.current_step))
+                # rospy.loginfo("Training recovered. Next step will be step number {}"
+                #               .format(rl_algorithm.statistics.current_step))
                 return rl_algorithm
         except IOError:
             rospy.loginfo("There is no Training saved. New object has been created")
