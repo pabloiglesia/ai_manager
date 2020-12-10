@@ -252,7 +252,7 @@ class RLAlgorithm:
                     self.rl_algorithm.statistics.add_succesful_episode(False)  # Saving episode failure statistic
                     rospy.loginfo("Episode ended: Environment limits reached!")
             else:  # If it is not a Terminal State
-                episode_done = True
+                episode_done = False
                 if self.rl_algorithm.current_action == 'pick':  # if it is not the first action and action is pick
                     reward = -10
                     self.image_controller.record_image(previous_image, False)  # Saving the falure state image
@@ -514,8 +514,8 @@ class RLAlgorithm:
         try:
             with open(filename, 'rb') as input:
                 rl_algorithm = pickle.load(input)
-                rospy.loginfo("Training recovered. Next step will be step number {}"
-                              .format(rl_algorithm.statistics.current_step))
+                # rospy.loginfo("Training recovered. Next step will be step number {}"
+                #               .format(rl_algorithm.statistics.current_step))
                 return rl_algorithm
         except IOError:
             rospy.loginfo("There is no Training saved. New object has been created")
@@ -535,7 +535,6 @@ class RLAlgorithm:
             experiences = self.memory.sample(self.batch_size)  # Retrieve the experiences
             states, coordinates, actions, rewards, next_states, next_coordinates, is_final_state = self.extract_tensors(
                 experiences)  # We split the batch of experience into different tensors
-
             # To compute the loss, current_q_values and target_q_values have to be calculated
             current_q_values = self.QValues.get_current(self.policy_net, states, coordinates, actions)
             # next_q_values is the maximum Q-value of each future state
