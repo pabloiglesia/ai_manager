@@ -63,7 +63,7 @@ class RLAlgorithm:
 
     """
 
-    def __init__(self, batch_size=32, gamma=0.999, eps_start=1, eps_end=0.01, eps_decay=0.001, target_update=10,
+    def __init__(self, batch_size=32, gamma=0.999, eps_start=1, eps_end=0.01, eps_decay=0.0005, target_update=10,
                  memory_size=2000, lr=0.001, num_episodes=1000):
         """
 
