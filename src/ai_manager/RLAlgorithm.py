@@ -17,6 +17,7 @@ import torchvision.transforms as T
 from PIL import Image
 
 from Environment import Environment
+from ImageProcessing import ImageModel
 from ImageController import ImageController
 
 is_ipython = 'inline' in matplotlib.get_backend()
@@ -223,9 +224,12 @@ class RLAlgorithm:
             self.actions = ['north', 'south', 'east', 'west', 'pick']  # Possible actions of the objects
             self.image_height = None  # Retrieved images height
             self.image_width = None  # Retrieved Images Width
-            self.image_msg = None  # Current image ROS message
+            self.image = None  # Current image ROS message
             self.image_tensor = None  # Current image tensor
-            self.image_tensor_size = None  # Size of the image after performing some transformations
+            self.image_tensor_size = self.image_model.get_size_features(self.inference_model)  # Size of the image after performing some transformations
+            print(self.image_tensor_sizes)
+            self.image_model = ImageModel()
+            self.feature_extraction_model = self.image_model.inference_model()
             self.rl_algorithm = rl_algorithm
             self.image_size = image_size
             self.gather_image_state()  # Retrieve initial state image
@@ -268,23 +272,19 @@ class RLAlgorithm:
             This method gather information about the ur3 robot state by reading several ROS topics
             :param img_controller: class which will allow us to save sensor_msgs images
             """
-            previous_image = self.image_msg
-            self.image_msg, self.image_width, self.image_height = self.image_controller.get_image()  # We retrieve state image
-            self.image_tensor = self.get_processed_screen(self.image_msg)
-            self.image_tensor_size = self.image_tensor.size
+            previous_image = self.image
+            self.image, self.image_width, self.image_height = self.image_controller.get_image()  # We retrieve state image
+            self.image_tensor = self.get_processed_screen(self.image)
             return previous_image
 
-        def get_processed_screen(self, image_raw):
+        def get_processed_screen(self, image):
             """
             Method used to transformate the image to a spected tensor that Neural Network is specting
             :param image_raw: Image
             :return:
             """
-            resize = T.Compose([T.Resize(self.image_size, interpolation=Image.CUBIC),
-                                T.ToTensor()])
-            processed_screen = resize(image_raw).unsqueeze(0).to(self.device)
+            return self.image_model.evaluate_image(image, self.inference_model)
 
-            return processed_screen
 
         def num_actions_available(self):
             """
