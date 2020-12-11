@@ -197,6 +197,7 @@ class RLAlgorithm:
             self.linear1 = nn.Linear(image_tensor_size, int(image_tensor_size/2))
             self.linear2 = nn.Linear(int(image_tensor_size/2), int(image_tensor_size/4))
             self.linear3 = nn.Linear(int(image_tensor_size/4) + 2, num_actions)
+            self.linear = nn.Linear(image_tensor_size + 2, num_actions)
 
         # Called with either one element to determine next action, or a batch
         # during optimization. Returns tensor([[left0exp,right0exp]...]).
@@ -208,10 +209,10 @@ class RLAlgorithm:
             # linear_input = features3.view(features3.size(0), -1)
             # linear_input = torch.cat((linear_input, coordinates), 1)
 
-            output = self.linear1(image_raw)
-            output = self.linear2(output)
-            output = torch.cat((output, coordinates), 1)
-
+            # output = self.linear1(image_raw)
+            # output = self.linear2(output)
+            # output = torch.cat((output, coordinates), 1)
+            output = torch.cat((image_raw, coordinates), 1)
             return self.linear3(output)
 
     class EnvManager:
