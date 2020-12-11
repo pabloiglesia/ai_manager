@@ -292,7 +292,7 @@ class RLAlgorithm:
             :return:
             """
             features, features_size = self.image_model.evaluate_image(image, self.feature_extraction_model)
-            return features
+            return features.to(self.device)
 
 
         def num_actions_available(self):
