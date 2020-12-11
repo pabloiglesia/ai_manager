@@ -554,7 +554,7 @@ class RLAlgorithm:
             self.optimizer.zero_grad()  # set all the gradients to 0 (initialization) so that we don't accumulate
             print('Calling Backward')
             # gradient throughout all the backpropagation
-            loss.backward()  # Compute the gradient of the loss with respect to all the weights and biases in the
+            loss.backward(retain_graph=True)  # Compute the gradient of the loss with respect to all the weights and biases in the
             # policy net
             self.optimizer.step()  # Updates the weights and biases with the gradients computed
 
