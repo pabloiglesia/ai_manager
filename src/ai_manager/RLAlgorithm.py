@@ -293,7 +293,8 @@ class RLAlgorithm:
             :param image_raw: Image
             :return:
             """
-            return self.image_model.evaluate_image(image, self.feature_extraction_model)
+            features, features_size = self.image_model.evaluate_image(image, self.feature_extraction_model)
+            return features
 
 
         def num_actions_available(self):
