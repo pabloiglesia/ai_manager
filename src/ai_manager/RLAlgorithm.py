@@ -231,7 +231,7 @@ class RLAlgorithm:
             self.feature_extraction_model = self.image_model.inference_model()
             self.image_tensor_size = self.image_model.get_size_features(
                 self.feature_extraction_model)  # Size of the image after performing some transformations
-            print(self.image_tensor_size)
+            print("Features extracted: ", self.image_tensor_size)
 
             self.rl_algorithm = rl_algorithm
             self.image_size = image_size
