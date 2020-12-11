@@ -17,7 +17,7 @@ import torchvision.transforms as T
 from PIL import Image
 
 from Environment import Environment
-from ImageProcessing import ImageModel
+from ImageProcessing.ImageModel import ImageModel
 from ImageController import ImageController
 
 is_ipython = 'inline' in matplotlib.get_backend()
@@ -226,7 +226,6 @@ class RLAlgorithm:
             self.image_width = None  # Retrieved Images Width
             self.image = None  # Current image ROS message
             self.image_tensor = None  # Current image tensor
-
 
             self.image_model = ImageModel()
             self.feature_extraction_model = self.image_model.inference_model()
