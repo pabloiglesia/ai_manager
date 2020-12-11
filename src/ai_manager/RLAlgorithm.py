@@ -213,7 +213,7 @@ class RLAlgorithm:
             # output = self.linear2(output)
             # output = torch.cat((output, coordinates), 1)
             output = torch.cat((image_raw, coordinates), 1)
-            return self.linear3(output)
+            return self.linear(output)
 
     class EnvManager:
         """
