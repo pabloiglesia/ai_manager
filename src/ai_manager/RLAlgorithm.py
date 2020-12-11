@@ -552,6 +552,7 @@ class RLAlgorithm:
 
             loss = F.mse_loss(current_q_values, target_q_values.unsqueeze(1))  # Loss is calculated
             self.optimizer.zero_grad()  # set all the gradients to 0 (initialization) so that we don't accumulate
+            print('Calling Backward')
             # gradient throughout all the backpropagation
             loss.backward()  # Compute the gradient of the loss with respect to all the weights and biases in the
             # policy net
