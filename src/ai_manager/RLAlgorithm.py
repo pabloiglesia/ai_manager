@@ -283,8 +283,6 @@ class RLAlgorithm:
             previous_image = self.image
             self.image, self.image_width, self.image_height = self.image_controller.get_image()  # We retrieve state image
             self.image_tensor = self.get_processed_screen(self.image)
-            print(self.image_tensor)
-            print(type(self.image_tensor))
             return previous_image
 
         def get_processed_screen(self, image):
