@@ -194,9 +194,9 @@ class RLAlgorithm:
             #
             # # Linear Step where we include the image features and the current robot coordinates
             # linear_input_size = (convw * convh * 32) + 2
-            self.linear1 = nn.Linear(image_tensor_size, image_tensor_size/2)
-            self.linear2 = nn.Linear(image_tensor_size/2, image_tensor_size/4)
-            self.linear3 = nn.Linear(image_tensor_size/4 + 2, num_actions)
+            self.linear1 = nn.Linear(image_tensor_size, int(image_tensor_size/2))
+            self.linear2 = nn.Linear(int(image_tensor_size/2), int(image_tensor_size/4))
+            self.linear3 = nn.Linear(int(image_tensor_size/4) + 2, num_actions)
 
         # Called with either one element to determine next action, or a batch
         # during optimization. Returns tensor([[left0exp,right0exp]...]).
