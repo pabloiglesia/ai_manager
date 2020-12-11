@@ -17,7 +17,7 @@ import torchvision.transforms as T
 from PIL import Image
 
 from Environment import Environment
-# from ImageProcessing.ImageModel import ImageModel
+from ImageProcessing.ImageModel import ImageModel
 from ImageController import ImageController
 
 is_ipython = 'inline' in matplotlib.get_backend()
@@ -227,12 +227,11 @@ class RLAlgorithm:
             self.image = None  # Current image ROS message
             self.image_tensor = None  # Current image tensor
 
-            self.image_tensor_size = torch.Tensor([1,1,1])
-            # self.image_model = ImageModel()
-            # self.feature_extraction_model = self.image_model.inference_model()
-            # self.image_tensor_size = self.image_model.get_size_features(
-            #     self.feature_extraction_model)  # Size of the image after performing some transformations
-            # print(self.image_tensor_size)
+            self.image_model = ImageModel()
+            self.feature_extraction_model = self.image_model.inference_model()
+            self.image_tensor_size = self.image_model.get_size_features(
+                self.feature_extraction_model)  # Size of the image after performing some transformations
+            print(self.image_tensor_size)
 
             self.rl_algorithm = rl_algorithm
             self.image_size = image_size
@@ -287,8 +286,8 @@ class RLAlgorithm:
             :param image_raw: Image
             :return:
             """
-            # return self.image_model.evaluate_image(image, self.feature_extraction_model)
-            return image
+            return self.image_model.evaluate_image(image, self.feature_extraction_model)
+
 
         def num_actions_available(self):
             """
