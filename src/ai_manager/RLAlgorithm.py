@@ -175,38 +175,44 @@ class RLAlgorithm:
             """
             super(RLAlgorithm.DQN, self).__init__()
             # Different Convolutional Steps to retrieve the image features
-            self.conv1 = nn.Conv2d(3, 16, kernel_size=kernel_size, stride=stride)
-            self.bn1 = nn.BatchNorm2d(16)
-            self.conv2 = nn.Conv2d(16, 32, kernel_size=kernel_size, stride=stride)
-            self.bn2 = nn.BatchNorm2d(32)
-            self.conv3 = nn.Conv2d(32, 32, kernel_size=kernel_size, stride=stride)
-            self.bn3 = nn.BatchNorm2d(32)
-
-            # Number of Linear input connections depends on output of conv2d layers
-            # and therefore the input image size, so compute it.
-            def conv2d_size_out(size, kernel_size=kernel_size, stride=stride):
-                return (size - (kernel_size - 1) - 1) // stride + 1
-
-            convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(image_tensor_size(2))))  # Width of the conv output
-            convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(image_tensor_size(3))))  # Height of the conv output
-            # convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(img_width)))
-            # convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(img_height)))
-
-            # Linear Step where we include the image features and the current robot coordinates
-            linear_input_size = (convw * convh * 32) + 2
-            self.head = nn.Linear(linear_input_size, num_actions)
+            # self.conv1 = nn.Conv2d(3, 16, kernel_size=kernel_size, stride=stride)
+            # self.bn1 = nn.BatchNorm2d(16)
+            # self.conv2 = nn.Conv2d(16, 32, kernel_size=kernel_size, stride=stride)
+            # self.bn2 = nn.BatchNorm2d(32)
+            # self.conv3 = nn.Conv2d(32, 32, kernel_size=kernel_size, stride=stride)
+            # self.bn3 = nn.BatchNorm2d(32)
+            #
+            # # Number of Linear input connections depends on output of conv2d layers
+            # # and therefore the input image size, so compute it.
+            # def conv2d_size_out(size, kernel_size=kernel_size, stride=stride):
+            #     return (size - (kernel_size - 1) - 1) // stride + 1
+            #
+            # convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(image_tensor_size(2))))  # Width of the conv output
+            # convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(image_tensor_size(3))))  # Height of the conv output
+            # # convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(img_width)))
+            # # convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(img_height)))
+            #
+            # # Linear Step where we include the image features and the current robot coordinates
+            # linear_input_size = (convw * convh * 32) + 2
+            self.linear1 = nn.Linear(image_tensor_size, image_tensor_size/2)
+            self.linear2 = nn.Linear(image_tensor_size/2, image_tensor_size/4)
+            self.linear3 = nn.Linear(image_tensor_size/4 + 2, num_actions)
 
         # Called with either one element to determine next action, or a batch
         # during optimization. Returns tensor([[left0exp,right0exp]...]).
         def forward(self, image_raw, coordinates):
-            features1 = F.relu(self.bn1(self.conv1(image_raw)))
-            features2 = F.relu(self.bn2(self.conv2(features1)))
-            features3 = F.relu(self.bn3(self.conv3(features2)))
+            # features1 = F.relu(self.bn1(self.conv1(image_raw)))
+            # features2 = F.relu(self.bn2(self.conv2(features1)))
+            # features3 = F.relu(self.bn3(self.conv3(features2)))
+            #
+            # linear_input = features3.view(features3.size(0), -1)
+            # linear_input = torch.cat((linear_input, coordinates), 1)
 
-            linear_input = features3.view(features3.size(0), -1)
-            linear_input = torch.cat((linear_input, coordinates), 1)
+            output = self.linear1(image_raw)
+            output = self.linear2(output)
+            output = torch.cat((output, coordinates), 1)
 
-            return self.head(linear_input)
+            return self.linar3(output)
 
     class EnvManager:
         """
@@ -231,7 +237,6 @@ class RLAlgorithm:
             self.feature_extraction_model = self.image_model.inference_model()
             self.image_tensor_size = self.image_model.get_size_features(
                 self.feature_extraction_model)  # Size of the image after performing some transformations
-            print("Features extracted: ", self.image_tensor_size)
 
             self.rl_algorithm = rl_algorithm
             self.image_size = image_size
