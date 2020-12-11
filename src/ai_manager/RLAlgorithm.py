@@ -212,7 +212,7 @@ class RLAlgorithm:
             output = self.linear2(output)
             output = torch.cat((output, coordinates), 1)
 
-            return self.linar3(output)
+            return self.linear3(output)
 
     class EnvManager:
         """
