@@ -64,7 +64,7 @@ class RLAlgorithm:
 
     """
 
-    def __init__(self, batch_size=1, gamma=0.999, eps_start=1, eps_end=0.01, eps_decay=0.0005, target_update=10,
+    def __init__(self, batch_size=32, gamma=0.999, eps_start=1, eps_end=0.01, eps_decay=0.0005, target_update=10,
                  memory_size=2000, lr=0.001, num_episodes=1000):
         """
 
@@ -112,6 +112,8 @@ class RLAlgorithm:
         self.target_net.eval()  # Target net has to be the same as policy network
         self.optimizer = optim.Adam(params=self.policy_net.parameters(), lr=self.lr)  # Q Networks optimizer
 
+        print("Device: ", self.device)
+
     class Agent:
         """
         Class that contains all needed methods to control the agent through the environment and retrieve information of
@@ -151,9 +153,13 @@ class RLAlgorithm:
                     action = random.randrange(self.num_actions)
                     self.rl_algorithm.statistics.random_action()  # Recolecting statistics
                 else:  # With a probability = (1 - rate) we Explote the information we already have
-                    with torch.no_grad():  # We calculate the action using the Policy Q Network
-                        action = policy_net(state.image_raw, torch.tensor(
-                            [[state.coordinate_x, state.coordinate_y]], device=self.device)).argmax(dim=1).to(self.device)  # exploit
+                    print("No Random")
+                    try:
+                        with torch.no_grad():  # We calculate the action using the Policy Q Network
+                            action = policy_net(state.image_raw, torch.tensor(
+                                [[state.coordinate_x, state.coordinate_y]], device=self.device)).argmax(dim=1).to(self.device)  # exploit
+                    except:
+                        print("Ha habido un error")
 
                 self.rl_algorithm.current_action = self.rl_algorithm.em.actions[action]
                 self.rl_algorithm.current_action_idx = action
@@ -210,11 +216,11 @@ class RLAlgorithm:
             # linear_input = features3.view(features3.size(0), -1)
             # linear_input = torch.cat((linear_input, coordinates), 1)
 
-            # output = self.linear1(image_raw)
-            # output = self.linear2(output)
-            # output = torch.cat((output, coordinates), 1)
-            output = torch.cat((image_raw, coordinates), 1)
-            return self.linear(output)
+            output = self.linear1(image_raw)
+            output = self.linear2(output)
+            output = torch.cat((output, coordinates), 1)
+            # output = torch.cat((image_raw, coordinates), 1)
+            return self.linear3(output)
 
     class EnvManager:
         """
@@ -236,7 +242,9 @@ class RLAlgorithm:
             self.image_tensor = None  # Current image tensor
 
             self.image_model = ImageModel()
-            self.feature_extraction_model = self.image_model.inference_model()
+            self.model = self.image_model.load_best_model()
+            self.feature_extraction_model = self.image_model.model.load_from_checkpoint(self.image_model.MODEL_CKPT_PATH
+                                                                                        + self.model)
             self.image_tensor_size = self.image_model.get_size_features(
                 self.feature_extraction_model)  # Size of the image after performing some transformations
 
@@ -293,7 +301,8 @@ class RLAlgorithm:
             :param image_raw: Image
             :return:
             """
-            features, features_size = self.image_model.evaluate_image(image, self.feature_extraction_model)
+            features = self.image_model.evaluate_image(image, self.feature_extraction_model)
+            features = torch.from_numpy(features)
             return features.to(self.device)
 
 
@@ -505,6 +514,9 @@ class RLAlgorithm:
 
         filename = create_if_not_exist(filename)
 
+        self.em.image_model = None
+        self.em.feature_extraction_model = None
+
         with open(filename, 'wb+') as output:  # Overwrites any existing file.
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
@@ -527,6 +539,10 @@ class RLAlgorithm:
                 rl_algorithm = pickle.load(input)
                 # rospy.loginfo("Training recovered. Next step will be step number {}"
                 #               .format(rl_algorithm.statistics.current_step))
+                rl_algorithm.em.image_model = ImageModel()
+                rl_algorithm.em.feature_extraction_model = rl_algorithm.em.image_model.model.load_from_checkpoint(
+                    rl_algorithm.em.image_model.MODEL_CKPT_PATH + rl_algorithm.em.model)
+
                 return rl_algorithm
         except IOError:
             rospy.loginfo("There is no Training saved. New object has been created")
@@ -554,7 +570,6 @@ class RLAlgorithm:
 
             loss = F.mse_loss(current_q_values, target_q_values.unsqueeze(1))  # Loss is calculated
             self.optimizer.zero_grad()  # set all the gradients to 0 (initialization) so that we don't accumulate
-            print('Calling Backward')
             # gradient throughout all the backpropagation
             loss.backward(retain_graph=True)  # Compute the gradient of the loss with respect to all the weights and biases in the
             # policy net
