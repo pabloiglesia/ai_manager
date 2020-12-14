@@ -18,18 +18,26 @@ class Environment:
     PICK_DISTANCE = 0.01  # Distance to the object when the robot is performing the pick and place action
     ACTION_DISTANCE = 0.025  # Distance to the object when the robot is performing the pick and place action
 
-    ENV_BOUNDS_TOLERANCE = 0.01
+    ENV_BOUNDS_TOLERANCE = 0
 
     @staticmethod
     def generate_random_state():
         """
-        Calculates random coordinates inside the Relative Environment defined
+        Calculates random coordinates inside the Relative Environment defined.
+        To help the robot empty the box, the generated coordinates won't be in the center of the box, because this is
+        the most reachable place of the box.
         :return:
         """
-        coordinate_x = random.uniform((-Environment.X_LENGTH + Environment.ENV_BOUNDS_TOLERANCE) / 2,
-                                      (Environment.X_LENGTH - Environment.ENV_BOUNDS_TOLERANCE) / 2)
-        coordinate_y = random.uniform((-Environment.Y_LENGTH + Environment.ENV_BOUNDS_TOLERANCE) / 2,
-                                      (Environment.Y_LENGTH - Environment.ENV_BOUNDS_TOLERANCE) / 2)
+        coordinates_in_center = True
+        while coordinates_in_center:
+            coordinate_x = random.uniform((-Environment.X_LENGTH + Environment.ENV_BOUNDS_TOLERANCE) / 2,
+                                          (Environment.X_LENGTH - Environment.ENV_BOUNDS_TOLERANCE) / 2)
+            coordinate_y = random.uniform((-Environment.Y_LENGTH + Environment.ENV_BOUNDS_TOLERANCE) / 2,
+                                          (Environment.Y_LENGTH - Environment.ENV_BOUNDS_TOLERANCE) / 2)
+
+            if abs(coordinate_x) > (Environment.X_LENGTH / 4) and abs(coordinate_y) > (Environment.Y_LENGTH / 4):
+                coordinates_in_center = False
+
         return [coordinate_x, coordinate_y]
 
     @staticmethod

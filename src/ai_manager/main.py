@@ -44,6 +44,7 @@ def get_actions_server():
     rospy.spin()
     rospy.on_shutdown(save_training)
 
+
 def save_training():
     RL_ALGORITHM.save_training()
 
