@@ -4,6 +4,8 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 import pickle
+from Environment import Environment
+import math
 
 
 class TrainingStatistics:
@@ -40,7 +42,7 @@ class TrainingStatistics:
 
             self.coordinates_matrix[x_idx][y_idx] += 1
         except:
-            rospy.loginfo('Error while filling coordinates statistics matrix')
+            print('Error while filling coordinates statistics matrix')
 
     def new_episode(self):
         self.episode += 1  # Increase the episode counter
