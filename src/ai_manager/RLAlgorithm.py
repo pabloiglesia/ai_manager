@@ -280,6 +280,7 @@ class RLAlgorithm:
                     self.image_controller.record_image(previous_image, False)  # Saving the falure state image
                     self.rl_algorithm.statistics.increment_picks()  # Increase of the statistics counter
                 else:  # otherwise
+                    self.rl_algorithm.statistics.fill_coordinates_matrix(current_coordinates)
                     reward = -1
 
             self.rl_algorithm.statistics.add_reward(reward)  # Add reward to the algorithm statistics
@@ -435,6 +436,28 @@ class RLAlgorithm:
             self.episode_total_reward = [0]  # Total reward of each episode
             self.episode_random_actions = [0]  # Total reward of each episode
             self.episode_succeed = []  # Array that stores whether each episode has ended successfully or not
+            self.coordinates_matrix = self.generate_coordinates_matrix()
+
+        def generate_coordinates_matrix(self):
+            x_limit = Environment.X_LENGTH / 2
+            y_limit = Environment.Y_LENGTH / 2
+
+            matrix_width = 2 * math.ceil(x_limit/Environment.ACTION_DISTANCE)
+            matrix_height = 2 * math.ceil(y_limit/Environment.ACTION_DISTANCE)
+
+            return [([0]*matrix_height) for i in range(matrix_width)]
+
+        def fill_coordinates_matrix(self, coordinates):
+            try:
+                matrix_width = len(self.coordinates_matrix[0])  # y
+                matrix_height = len(self.coordinates_matrix)  # x
+
+                x_idx = int(math.ceil(coordinates[0] / Environment.ACTION_DISTANCE) + (matrix_height / 2) - 1)
+                y_idx = int(math.ceil(coordinates[1] / Environment.ACTION_DISTANCE) + (matrix_width / 2) - 1)
+
+                self.coordinates_matrix[x_idx][y_idx] += 1
+            except:
+                rospy.loginfo('Error while filling coordinates statistics matrix')
 
         def new_episode(self):
             self.episode += 1  # Increase the episode counter
@@ -521,6 +544,7 @@ class RLAlgorithm:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
         rospy.loginfo("Saving Statistics...")
+        print(self.statistics.coordinates_matrix)
 
         statistics_filename = "{}_stats.pkl".format(filename.split('.pkl')[0])
         statistics_filename = create_if_not_exist(statistics_filename)

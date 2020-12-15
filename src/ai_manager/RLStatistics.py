@@ -1,6 +1,9 @@
 from RLAlgorithm import RLAlgorithm
 import matplotlib.pyplot as plt
 import os
+import seaborn as sns
+import pandas as pd
+import numpy as np
 
 rl_algorithm = RLAlgorithm.recover_training(filename="trainings/training20201209.pkl")
 image_path = "statistics/"
@@ -81,5 +84,16 @@ try:
 
        fig.savefig(image_path + "random_actions.png")
        plt.show()
+except:
+       print("Error while plotting random_actions")
+
+
+#  Random actions
+try:
+       # Create a dataset from the statistics gader
+       df = pd.DataFrame(np.array(rl_algorithm.statistics.coordinates_matrix))
+
+       # Default heatmap: just a visualization of this square matrix
+       p1 = sns.heatmap(df).set_title("Heatmap of the robot")
 except:
        print("Error while plotting random_actions")
