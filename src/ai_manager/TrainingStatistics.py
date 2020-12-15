@@ -72,10 +72,10 @@ class TrainingStatistics:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
     @staticmethod
-    def recover(filename='trainings/rl_algorithm.pkl'):
+    def recover(filename='trainings/rl_algorithm_stats.pkl'):
         current_path = os.path.dirname(os.path.realpath(__file__))
         filename = os.path.join(current_path, filename)
-
+        print(filename)
         try:
             with open(filename, 'rb') as input:
                 stats = pickle.load(input)
@@ -170,11 +170,12 @@ if __name__ == '__main__':
         print("Error while plotting random_actions")
 
     #  Random actions
-    try:
-        # Create a dataset from the statistics gader
-        df = pd.DataFrame(np.array(stats.coordinates_matrix))
+    # try:
+    # Create a dataset from the statistics gader
+    df = pd.DataFrame(np.array(stats.coordinates_matrix))
 
-        # Default heatmap: just a visualization of this square matrix
-        p1 = sns.heatmap(df).set_title("Heatmap of the robot")
-    except:
-        print("Error while plotting random_actions")
+    # Default heatmap: just a visualization of this square matrix
+    p1 = sns.heatmap(df)
+    plt.show()
+    # except:
+    #     print("Error while plotting robot heatmap")

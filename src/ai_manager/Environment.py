@@ -35,7 +35,7 @@ class Environment:
             coordinate_y = random.uniform((-Environment.Y_LENGTH + Environment.ENV_BOUNDS_TOLERANCE) / 2,
                                           (Environment.Y_LENGTH - Environment.ENV_BOUNDS_TOLERANCE) / 2)
 
-            if abs(coordinate_x) > (Environment.X_LENGTH / 4) and abs(coordinate_y) > (Environment.Y_LENGTH / 4):
+            if abs(coordinate_x) > (Environment.X_LENGTH / 4) or abs(coordinate_y) > (Environment.Y_LENGTH / 4):
                 coordinates_in_center = False
 
         return [coordinate_x, coordinate_y]
