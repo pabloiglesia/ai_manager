@@ -17,6 +17,7 @@ import torchvision.transforms as T
 from PIL import Image
 
 from Environment import Environment
+from TrainingStatistics import TrainingStatistics
 from ImageProcessing.ImageModel import ImageModel
 from ImageController import ImageController
 
@@ -102,7 +103,7 @@ class RLAlgorithm:
         self.strategy = self.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay)  # Greede Strategy
         self.agent = self.Agent(self)  # RL Agent
         self.memory = self.ReplayMemory(self.memory_size)  # Replay Memory
-        self.statistics = self.TrainingStatistics()  # Training statistics
+        self.statistics = TrainingStatistics()  # Training statistics
 
         self.policy_net = self.DQN(self.em.image_tensor_size,
                                    self.em.num_actions_available()).to(self.device)  # Policy Q Network
@@ -423,65 +424,6 @@ class RLAlgorithm:
             """
             return len(self.memory) >= batch_size
 
-    class TrainingStatistics:
-        """
-        Class were all the statistics of the training will be stored.
-        """
-
-        def __init__(self):
-            self.current_step = 0  # Current step since the beginning of training
-            self.episode = 0  # Number of episode
-            self.episode_steps = [0]  # Steps taken by each episode
-            self.episode_picks = [0]  # Pick actions tried by each episode
-            self.episode_total_reward = [0]  # Total reward of each episode
-            self.episode_random_actions = [0]  # Total reward of each episode
-            self.episode_succeed = []  # Array that stores whether each episode has ended successfully or not
-            self.coordinates_matrix = self.generate_coordinates_matrix()
-
-        def generate_coordinates_matrix(self):
-            x_limit = Environment.X_LENGTH / 2
-            y_limit = Environment.Y_LENGTH / 2
-
-            matrix_width = 2 * math.ceil(x_limit/Environment.ACTION_DISTANCE)
-            matrix_height = 2 * math.ceil(y_limit/Environment.ACTION_DISTANCE)
-
-            return [([0]*matrix_height) for i in range(matrix_width)]
-
-        def fill_coordinates_matrix(self, coordinates):
-            try:
-                matrix_width = len(self.coordinates_matrix[0])  # y
-                matrix_height = len(self.coordinates_matrix)  # x
-
-                x_idx = int(math.ceil(coordinates[0] / Environment.ACTION_DISTANCE) + (matrix_height / 2) - 1)
-                y_idx = int(math.ceil(coordinates[1] / Environment.ACTION_DISTANCE) + (matrix_width / 2) - 1)
-
-                self.coordinates_matrix[x_idx][y_idx] += 1
-            except:
-                rospy.loginfo('Error while filling coordinates statistics matrix')
-
-        def new_episode(self):
-            self.episode += 1  # Increase the episode counter
-            self.episode_steps.append(0)  # Append a new value to the next episode step counter
-            self.episode_picks.append(0)  # Append a new value to the amount of picks counter
-            self.episode_total_reward.append(0)  # Append a new value to the next episode total reward counter
-            self.episode_random_actions.append(0)  # Append a new value to the next episode random actions counter
-
-        def new_step(self):
-            self.current_step += 1  # Increase step
-            self.episode_steps[-1] += 1  # Increase current episode step counter
-
-        def increment_picks(self):
-            self.episode_picks[-1] += 1  # Increase of the statistics counter
-
-        def add_reward(self, reward):
-            self.episode_total_reward[-1] += reward
-
-        def add_succesful_episode(self, successful):
-            self.episode_succeed.append(successful)
-
-        def random_action(self):
-            self.episode_random_actions[-1] += 1
-
     def extract_tensors(self, experiences):
         """
         Converts a batch of Experiences to Experience of batches and returns all the elements separately.
@@ -544,12 +486,7 @@ class RLAlgorithm:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
         rospy.loginfo("Saving Statistics...")
-        print(self.statistics.coordinates_matrix)
-
-        statistics_filename = "{}_stats.pkl".format(filename.split('.pkl')[0])
-        statistics_filename = create_if_not_exist(statistics_filename)
-        with open(statistics_filename, 'wb+') as output:  # Overwrites any existing file.
-            pickle.dump(self.statistics, output, pickle.HIGHEST_PROTOCOL)
+        self.statistics.save()
 
         rospy.loginfo("Training saved!")
 
