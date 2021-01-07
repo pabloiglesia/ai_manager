@@ -63,3 +63,8 @@ class ImageController:
         size = (msg.width, msg.height)  # Image size
         img = PILImage.frombytes('RGB', size, msg.data)  # sensor_msg to Image
         return img
+
+if __name__ == '__main__':
+    rospy.init_node('image_recorder', anonymous=True)  # ROS node initialization
+    image_controller = ImageController(path='/home/pablo/ros_pictures')
+    image_controller.record_image(image_controller.get_image(), True)
