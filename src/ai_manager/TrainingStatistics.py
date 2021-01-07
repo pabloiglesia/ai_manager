@@ -181,12 +181,14 @@ if __name__ == '__main__':
         print("Error while plotting random_actions")
 
     #  Random actions
-    # try:
-    # Create a dataset from the statistics gader
-    df = pd.DataFrame(np.array(stats.coordinates_matrix))
+    try:
+        # Create a dataset from the statistics gader
+        df = pd.DataFrame(np.array(stats.coordinates_matrix))
 
-    # Default heatmap: just a visualization of this square matrix
-    p1 = sns.heatmap(df)
-    plt.show()
-    # except:
-    #     print("Error while plotting robot heatmap")
+        # Default heatmap: just a visualization of this square matrix
+        p1 = sns.heatmap(df, cmap='coolwarm')
+        p1.set(xlabel='Y coordinates', ylabel='X coordinates',
+                   title='Robot movement heatmap')
+        plt.show()
+    except:
+        print("Error while plotting robot heatmap")
