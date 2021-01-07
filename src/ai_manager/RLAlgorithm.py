@@ -143,22 +143,22 @@ class RLAlgorithm:
                 self.rl_algorithm.episode_done = False  # Put the variable episode_done back to False
                 self.rl_algorithm.statistics.new_episode()
 
-                # TODO: if self.self.episode >= self.self.num_episodes:
                 self.rl_algorithm.current_action = 'random_state'  # Return random_state to reset the robot position
                 self.rl_algorithm.current_action_idx = None
             else:
-                rate = self.strategy.get_exploration_rate(self.rl_algorithm.statistics.current_step)  # We get the current epsilon value
+                rate = self.strategy.get_exploration_rate(
+                    self.rl_algorithm.statistics.current_step)  # We get the current epsilon value
                 self.rl_algorithm.statistics.new_step()  # Add new steps statistics
 
                 if rate > random.random():  # With a probability = rate we choose a random action (Explore environment)
                     action = random.randrange(self.num_actions)
                     self.rl_algorithm.statistics.random_action()  # Recolecting statistics
                 else:  # With a probability = (1 - rate) we Explote the information we already have
-                    print("No Random")
                     try:
                         with torch.no_grad():  # We calculate the action using the Policy Q Network
                             action = policy_net(state.image_raw, torch.tensor(
-                                [[state.coordinate_x, state.coordinate_y]], device=self.device)).argmax(dim=1).to(self.device)  # exploit
+                                [[state.coordinate_x, state.coordinate_y]], device=self.device)).argmax(dim=1).to(
+                                self.device)  # exploit
                     except:
                         print("Ha habido un error")
 
@@ -201,10 +201,9 @@ class RLAlgorithm:
             #
             # # Linear Step where we include the image features and the current robot coordinates
             # linear_input_size = (convw * convh * 32) + 2
-            self.linear1 = nn.Linear(image_tensor_size, int(image_tensor_size/2))
-            self.linear2 = nn.Linear(int(image_tensor_size/2), int(image_tensor_size/4))
-            self.linear3 = nn.Linear(int(image_tensor_size/4) + 2, num_actions)
-            print(image_tensor_size)
+            self.linear1 = nn.Linear(image_tensor_size, int(image_tensor_size / 2))
+            self.linear2 = nn.Linear(int(image_tensor_size / 2), int(image_tensor_size / 4))
+            self.linear3 = nn.Linear(int(image_tensor_size / 4) + 2, num_actions)
             self.linear = nn.Linear(image_tensor_size + 2, num_actions)
 
         # Called with either one element to determine next action, or a batch
@@ -242,7 +241,7 @@ class RLAlgorithm:
             self.image = None  # Current image ROS message
             self.image_tensor = None  # Current image tensor
 
-            self.image_model = ImageModel()
+            self.image_model = ImageModel(model_name='resnet50')
             self.model = self.image_model.load_best_model()
             self.feature_extraction_model = self.image_model.model.load_from_checkpoint(self.image_model.MODEL_CKPT_PATH
                                                                                         + self.model)
@@ -267,7 +266,7 @@ class RLAlgorithm:
                 if object_gripped:  # If object_gripped is True, the episode has ended successfully
                     reward = 100
                     self.rl_algorithm.statistics.add_succesful_episode(True)  # Saving episode successful statistic
-                    self.rl_algorithm.statistics.increment_picks()    # Increase of the statistics cpunter
+                    self.rl_algorithm.statistics.increment_picks()  # Increase of the statistics cpunter
                     rospy.loginfo("Episode ended: Object gripped!")
                     self.image_controller.record_image(previous_image, True)  # Saving the falure state image
                 else:  # Otherwise the robot has reached the limits of the environment
@@ -306,7 +305,6 @@ class RLAlgorithm:
             features = self.image_model.evaluate_image(image, self.feature_extraction_model)
             features = torch.from_numpy(features)
             return features.to(self.device)
-
 
         def num_actions_available(self):
             """
@@ -500,7 +498,8 @@ class RLAlgorithm:
                 rl_algorithm = pickle.load(input)
                 # rospy.loginfo("Training recovered. Next step will be step number {}"
                 #               .format(rl_algorithm.statistics.current_step))
-                rl_algorithm.em.image_model = ImageModel()
+                rl_algorithm.em.image_model = ImageModel(model_name='resnet50')
+
                 rl_algorithm.em.feature_extraction_model = rl_algorithm.em.image_model.model.load_from_checkpoint(
                     rl_algorithm.em.image_model.MODEL_CKPT_PATH + rl_algorithm.em.model)
 
@@ -532,7 +531,8 @@ class RLAlgorithm:
             loss = F.mse_loss(current_q_values, target_q_values.unsqueeze(1))  # Loss is calculated
             self.optimizer.zero_grad()  # set all the gradients to 0 (initialization) so that we don't accumulate
             # gradient throughout all the backpropagation
-            loss.backward(retain_graph=True)  # Compute the gradient of the loss with respect to all the weights and biases in the
+            loss.backward(
+                retain_graph=True)  # Compute the gradient of the loss with respect to all the weights and biases in the
             # policy net
             self.optimizer.step()  # Updates the weights and biases with the gradients computed
 
@@ -561,6 +561,33 @@ class RLAlgorithm:
         previous_reward, is_final_state = self.em.calculate_reward(previous_image)
         action = self.agent.select_action(self.current_state,
                                           self.policy_net)  # Calculates action
+
+        # There are some defined rules that the next action have to accomplish depending on the previous action
+        action_ok = False
+        while not action_ok:
+            # Its forbidden to perform two cosecutive pick actions in the same place
+            if action == 'pick' and previous_action != 'pick':
+                action_ok = True
+            # If previous action was south, it is forbidden to perform a 'north' action for
+            # The robot not to go back to the original position.
+            elif action == 'north' and previous_action != 'south':
+                action_ok = True
+            # If previous action was north, it is forbidden to perform a 'south' action for
+            # The robot not to go back to the original position.
+            elif action == 'south' and previous_action != 'north':
+                action_ok = True
+            # If previous action was east, it is forbidden to perform a 'west' action for
+            # The robot not to go back to the original position.
+            elif action == 'west' and previous_action != 'east':
+                action_ok = True
+            # If previous action was west, it is forbidden to perform a 'east' action for
+            # The robot not to go back to the original position.
+            elif action == 'east' and previous_action != 'west':
+                action_ok = True
+            else:
+                action = self.agent.select_action(self.current_state,
+                                                  self.policy_net)  # Calculates action
+
 
         # Random_state actions are used just to initialize the environment to a random position, so it is not taken into
         # account while storing state information in the Replay Memory.

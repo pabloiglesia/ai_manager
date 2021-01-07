@@ -19,7 +19,7 @@ class TrainingStatistics:
         self.episode_steps = [0]  # Steps taken by each episode
         self.episode_picks = [0]  # Pick actions tried by each episode
         self.episode_total_reward = [0]  # Total reward of each episode
-        self.episode_random_actions = [0]  # Total reward of each episode
+        self.episode_random_actions = [0]  # Number of random actions in each episode
         self.episode_succeed = []  # Array that stores whether each episode has ended successfully or not
         self.coordinates_matrix = self.generate_coordinates_matrix()
 
@@ -68,6 +68,17 @@ class TrainingStatistics:
         self.episode_random_actions[-1] += 1
 
     def save(self, filename='trainings/rl_algorithm_stats.pkl'):
+        def create_if_not_exist(filename):
+            current_path = os.path.dirname(os.path.realpath(__file__))
+            filename = os.path.join(current_path, filename)
+            if not os.path.exists(os.path.dirname(filename)):
+                try:
+                    os.makedirs(os.path.dirname(filename))
+                except OSError as exc:  # Guard against race condition
+                    if exc.errno != errno.EEXIST:
+                        raise
+            return filename
+        filename = create_if_not_exist(filename)
         with open(filename, 'wb+') as output:  # Overwrites any existing file.
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 

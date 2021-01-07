@@ -16,7 +16,6 @@ rospy.init_node('ai_manager', anonymous=True)  # ROS node initialization
 # Global Image Controller
 RL_ALGORITHM = RLAlgorithm.recover_training()
 
-
 def handle_get_actions(req):
     """
     Callback for each Request from the Robot

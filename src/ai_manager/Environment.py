@@ -16,27 +16,35 @@ class Environment:
     ANGULAR_PICTURE_PLACE = [1.615200161933899, -1.235102955495016, 0.739865779876709, -1.2438910643206995, -1.5095704237567347, -0.06187755266298467]
 
     PICK_DISTANCE = 0.01  # Distance to the object when the robot is performing the pick and place action
-    ACTION_DISTANCE = 0.025  # Distance to the object when the robot is performing the pick and place action
+    ACTION_DISTANCE = 0.02  # Distance to the object when the robot is performing the pick and place action
 
     ENV_BOUNDS_TOLERANCE = 0
 
     @staticmethod
-    def generate_random_state():
+    def generate_random_state(strategy='ncc'):
         """
         Calculates random coordinates inside the Relative Environment defined.
         To help the robot empty the box, the generated coordinates won't be in the center of the box, because this is
         the most reachable place of the box.
+
+        :param strategy: strategy used to calculate random_state coordinates
         :return:
         """
-        coordinates_in_center = True
-        while coordinates_in_center:
+        def generate_random_coordinates():
             coordinate_x = random.uniform((-Environment.X_LENGTH + Environment.ENV_BOUNDS_TOLERANCE) / 2,
                                           (Environment.X_LENGTH - Environment.ENV_BOUNDS_TOLERANCE) / 2)
             coordinate_y = random.uniform((-Environment.Y_LENGTH + Environment.ENV_BOUNDS_TOLERANCE) / 2,
                                           (Environment.Y_LENGTH - Environment.ENV_BOUNDS_TOLERANCE) / 2)
+            return coordinate_x, coordinate_y
 
-            if abs(coordinate_x) > (Environment.X_LENGTH / 4) or abs(coordinate_y) > (Environment.Y_LENGTH / 4):
-                coordinates_in_center = False
+        if strategy == 'ncc' or strategy == 'non_centered_coordinates':
+            coordinates_in_center = True
+            while coordinates_in_center:
+                coordinate_x, coordinate_y = generate_random_coordinates()
+                if abs(coordinate_x) > (Environment.X_LENGTH / 4) or abs(coordinate_y) > (Environment.Y_LENGTH / 4):
+                    coordinates_in_center = False
+        else:
+            coordinate_x, coordinate_y = generate_random_coordinates()
 
         return [coordinate_x, coordinate_y]
 
