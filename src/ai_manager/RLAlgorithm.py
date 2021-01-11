@@ -584,6 +584,8 @@ class RLAlgorithm:
             # The robot not to go back to the original position.
             elif action == 'east' and previous_action != 'west':
                 action_ok = True
+            elif action == 'random_state':
+                action_ok = True
             else:
                 action = self.agent.select_action(self.current_state,
                                                   self.policy_net)  # Calculates action
