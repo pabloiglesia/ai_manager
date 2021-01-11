@@ -460,11 +460,20 @@ class RLAlgorithm:
         plt.pause(0.001)
         if is_ipython: display.clear_output(wait=True)
 
-    def save_training(self, filename='trainings/rl_algorithm.pkl'):
+    @staticmethod
+    def saving_name(batch_size, gamma, eps_start, eps_end, eps_decay, random_strategy=''):
+        return 'bs{}_g{}_es{}_ee{}_ed{}_{}.pkl'.format(
+            batch_size, gamma, eps_start, eps_end, eps_decay, random_strategy
+        )
 
-        def create_if_not_exist(filename):
+    def save_training(self, dir='trainings/', random_strategy='optimal'):
+
+        filename = self.saving_name(self.batch_size, self.gamma, self.eps_start, self.eps_end, self.eps_decay,
+                                    random_strategy)
+
+        def create_if_not_exist(filename, dir):
             current_path = os.path.dirname(os.path.realpath(__file__))
-            filename = os.path.join(current_path, filename)
+            filename = os.path.join(current_path, dir, filename)
             if not os.path.exists(os.path.dirname(filename)):
                 try:
                     os.makedirs(os.path.dirname(filename))
@@ -475,7 +484,7 @@ class RLAlgorithm:
 
         rospy.loginfo("Saving training...")
 
-        filename = create_if_not_exist(filename)
+        filename = create_if_not_exist(filename, dir)
 
         self.em.image_model = None
         self.em.feature_extraction_model = None
@@ -489,10 +498,11 @@ class RLAlgorithm:
         rospy.loginfo("Training saved!")
 
     @staticmethod
-    def recover_training(filename='trainings/rl_algorithm.pkl'):
+    def recover_training(batch_size=32, gamma=0.999, eps_start=1, eps_end=0.01,
+                         eps_decay=0.0005, random_strategy='optimal', dir='trainings/',):
         current_path = os.path.dirname(os.path.realpath(__file__))
-        filename = os.path.join(current_path, filename)
-
+        filename = RLAlgorithm.saving_name(batch_size, gamma, eps_start, eps_end, eps_decay, random_strategy)
+        filename = os.path.join(current_path, dir, filename)
         try:
             with open(filename, 'rb') as input:
                 rl_algorithm = pickle.load(input)
@@ -506,7 +516,8 @@ class RLAlgorithm:
                 return rl_algorithm
         except IOError:
             rospy.loginfo("There is no Training saved. New object has been created")
-            return RLAlgorithm()
+            return RLAlgorithm(batch_size=32, gamma=0.999, eps_start=1, eps_end=0.01,
+                         eps_decay=0.0005)
 
     def train_net(self):
         """

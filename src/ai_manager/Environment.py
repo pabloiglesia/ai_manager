@@ -37,13 +37,15 @@ class Environment:
                                           (Environment.Y_LENGTH - Environment.ENV_BOUNDS_TOLERANCE) / 2)
             return coordinate_x, coordinate_y
 
+        # Random coordinates avoiding the ones in the center, which have a bigger probability of being reached by the
+        # robot.
         if strategy == 'ncc' or strategy == 'non_centered_coordinates':
             coordinates_in_center = True
             while coordinates_in_center:
                 coordinate_x, coordinate_y = generate_random_coordinates()
                 if abs(coordinate_x) > (Environment.X_LENGTH / 4) or abs(coordinate_y) > (Environment.Y_LENGTH / 4):
                     coordinates_in_center = False
-        else:
+        else: # Totally random coordinates
             coordinate_x, coordinate_y = generate_random_coordinates()
 
         return [coordinate_x, coordinate_y]
