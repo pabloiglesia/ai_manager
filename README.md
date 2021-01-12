@@ -68,4 +68,10 @@ training to another, but we give (positive or negative) rewards for:
 - Other non terminal states
 
 ## Algorithm
+The algorithm used in this project is a deep Q Learning algorithm. In this type of algorithms, images are used as inputs.
+These images represent the state of the agent and are passed through a convolutional neural network in order to extract 
+its features. 
+
+In our case, the camera is sticked to the robot and moves with it giving a partial view of the environment. The absolute
+
 

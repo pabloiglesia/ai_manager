@@ -49,14 +49,13 @@ class Environment:
                 coordinate_x, coordinate_y = generate_random_coordinates()
                 if abs(coordinate_x) > (Environment.X_LENGTH / 4) or abs(coordinate_y) > (Environment.Y_LENGTH / 4):
                     coordinates_in_center = False
-        elif strategy == 'optimal':  # Before going to a random state, we check that there are pieces in this place
-            blob_detector = BlobDetector(x_length=Environment.X_LENGTH, y_length=Environment.Y_LENGTH)
-            image_controller = ImageController(image_topic='/usb_cam2/image_raw')  # ImageController object to manage images
-            image, width, height = image_controller.get_image()
+        elif strategy == 'optimal' and image is not None:  # Before going to a random state, we check that there are pieces in this place
+            blob_detector = BlobDetector(x_length=Environment.X_LENGTH, y_length=Environment.X_LENGTH, columns=4, rows=4)
+            optimal_quadrant = blob_detector.find_optimal_quadrant(image)
+            optimal_point = blob_detector.quadrants_center[optimal_quadrant]
 
-            optimal_quadrant =  blob_detector.find_optimal_quadrant(image)
-            coordinate_x = (floor(optimal_quadrant/3) - 1) * Environment.X_LENGTH / 3
-            coordinate_y = (optimal_quadrant % 3 - 1) * Environment.Y_LENGTH / 3
+            coordinate_x = optimal_point[0]
+            coordinate_y = optimal_point[1]
         else: # Totally random coordinates
             coordinate_x, coordinate_y = generate_random_coordinates()
 
