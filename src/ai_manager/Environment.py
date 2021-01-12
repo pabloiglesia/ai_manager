@@ -5,6 +5,10 @@ and other parameters
 """
 
 import random
+from BlobDetector.BlobDetector import BlobDetector
+from ai_manager.ImageController import ImageController
+from math import floor
+
 
 class Environment:
     X_LENGTH = 0.14  # Total length of the x axis environment in meters
@@ -21,7 +25,7 @@ class Environment:
     ENV_BOUNDS_TOLERANCE = 0
 
     @staticmethod
-    def generate_random_state(strategy='ncc'):
+    def generate_random_state(image=None, strategy='ncc'):
         """
         Calculates random coordinates inside the Relative Environment defined.
         To help the robot empty the box, the generated coordinates won't be in the center of the box, because this is
@@ -45,6 +49,14 @@ class Environment:
                 coordinate_x, coordinate_y = generate_random_coordinates()
                 if abs(coordinate_x) > (Environment.X_LENGTH / 4) or abs(coordinate_y) > (Environment.Y_LENGTH / 4):
                     coordinates_in_center = False
+        elif strategy == 'optimal':  # Before going to a random state, we check that there are pieces in this place
+            blob_detector = BlobDetector(x_length=Environment.X_LENGTH, y_length=Environment.Y_LENGTH)
+            image_controller = ImageController(image_topic='/usb_cam2/image_raw')  # ImageController object to manage images
+            image, width, height = image_controller.get_image()
+
+            optimal_quadrant =  blob_detector.find_optimal_quadrant(image)
+            coordinate_x = (floor(optimal_quadrant/3) - 1) * Environment.X_LENGTH / 3
+            coordinate_y = (optimal_quadrant % 3 - 1) * Environment.Y_LENGTH / 3
         else: # Totally random coordinates
             coordinate_x, coordinate_y = generate_random_coordinates()
 
