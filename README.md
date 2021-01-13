@@ -68,10 +68,41 @@ training to another, but we give (positive or negative) rewards for:
 - Other non terminal states
 
 ## Algorithm
-The algorithm used in this project is a deep Q Learning algorithm. In this type of algorithms, images are used as inputs.
-These images represent the state of the agent and are passed through a convolutional neural network in order to extract 
-its features. 
+The algorithm used in this project is a **deep Q Learning** algorithm. In this type of algorithms, images are used as 
+inputs. These images represent the state of the agent and are passed through a convolutional neural network in order to extract 
+their features. 
 
-In our case, the camera is sticked to the robot and moves with it giving a partial view of the environment. The absolute
+In our case, the camera is sticked to the robot and moves with it giving a partial view of the environment as the one 
+showed in the image below.
+
+![Relative View](readme-images/relative-view.png)
+
+This algorithm is implemented in the class RLAlgorithm.py following this schema:
+  1. Initialize **replay memory** capacity.
+  2. Initialize the **policy network** with random weights.
+  3. Clone the policy network, and call it the **target network**.
+  4. **For each episode**:
+     1. Initialize the starting state.
+      2. **For each time step**:
+          1. Select an **action**.
+              - Via exploration or exploitation
+          2. **Execute** selected **action** in an emulator or in Real-life.
+          3. **Observe reward** and next state.
+          4. **Store** experience **in replay memory**.
+          5. Sample **random batch from replay memory**.
+          6. **Preprocess states** from batch.
+          7. **Pass batch** of preprocessed states **to policy network**.
+          8. **Calculate loss between output Q-values and target Q-values**.
+              - Requires a pass to the target network for the next state
+          9. Gradient descent **updates weights in the policy network** to minimize loss.
+              - After time steps, weights in the target network are updated to the weights in the policy network.
+  
+To understand better all these steps is highly recommended to follow the [DeepLizard's Reinforcement Learning course.](
+https://deeplizard.com/learn/playlist/PLZbbT5o_s2xoWNVdDudn51XM8lOuZ_Njv)
+
+
+
+
+
 
 
