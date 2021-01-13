@@ -11,8 +11,13 @@ from math import floor
 
 
 class Environment:
-    X_LENGTH = 0.14  # Total length of the x axis environment in meters
-    Y_LENGTH = 0.19  # Total length of the y axis environment in meters
+    X_LENGTH = 0.175  # Total length of the x axis environment in meters
+    Y_LENGTH = 0.225  # Total length of the y axis environment in meters
+
+    CAMERA_SECURITY_MARGIN = 0.035  # As the camera is really close to the gripping point, it needs  a security marging
+    X_LIMIT = X_LENGTH - CAMERA_SECURITY_MARGIN  # Robot boundaries of movement in axis X
+    Y_LIMIT = Y_LENGTH - CAMERA_SECURITY_MARGIN  # Robot boundaries of movement in axis Y
+
     CARTESIAN_CENTER = [-0.31899288568, -0.00357907370787, 0.376611799631]  # Cartesian center of the RL environment
     ANGULAR_CENTER = [2.7776150703430176, -1.5684941450702112, 1.299912452697754, -1.3755658308612269,
                       -1.5422008673297327, -0.3250663916217249]  # Angular center of the RL environment
@@ -35,10 +40,10 @@ class Environment:
         :return:
         """
         def generate_random_coordinates():
-            coordinate_x = random.uniform((-Environment.X_LENGTH + Environment.ENV_BOUNDS_TOLERANCE) / 2,
-                                          (Environment.X_LENGTH - Environment.ENV_BOUNDS_TOLERANCE) / 2)
-            coordinate_y = random.uniform((-Environment.Y_LENGTH + Environment.ENV_BOUNDS_TOLERANCE) / 2,
-                                          (Environment.Y_LENGTH - Environment.ENV_BOUNDS_TOLERANCE) / 2)
+            coordinate_x = random.uniform((-Environment.X_LIMIT + Environment.ENV_BOUNDS_TOLERANCE) / 2,
+                                          (Environment.X_LIMIT - Environment.ENV_BOUNDS_TOLERANCE) / 2)
+            coordinate_y = random.uniform((-Environment.Y_LIMIT + Environment.ENV_BOUNDS_TOLERANCE) / 2,
+                                          (Environment.Y_LIMIT - Environment.ENV_BOUNDS_TOLERANCE) / 2)
             return coordinate_x, coordinate_y
 
         # Random coordinates avoiding the ones in the center, which have a bigger probability of being reached by the
@@ -47,10 +52,10 @@ class Environment:
             coordinates_in_center = True
             while coordinates_in_center:
                 coordinate_x, coordinate_y = generate_random_coordinates()
-                if abs(coordinate_x) > (Environment.X_LENGTH / 4) or abs(coordinate_y) > (Environment.Y_LENGTH / 4):
+                if abs(coordinate_x) > (Environment.X_LIMIT / 4) or abs(coordinate_y) > (Environment.Y_LIMIT / 4):
                     coordinates_in_center = False
         elif strategy == 'optimal' and image is not None:  # Before going to a random state, we check that there are pieces in this place
-            blob_detector = BlobDetector(x_length=Environment.X_LENGTH + 0.05, y_length=Environment.X_LENGTH + 0.05, columns=4, rows=4)
+            blob_detector = BlobDetector(x_length=Environment.X_LENGTH, y_length=Environment.X_LENGTH, columns=4, rows=4)
             optimal_quadrant = blob_detector.find_optimal_quadrant(image)
             optimal_point = blob_detector.quadrants_center[optimal_quadrant]
 
@@ -74,13 +79,13 @@ class Environment:
         :return coordinate_x, coordinate_y:
         """
         if corner == 'sw' or corner == 'ws':
-            return -Environment.X_LENGTH / 2, Environment.Y_LENGTH / 2
+            return -Environment.X_LIMIT / 2, Environment.Y_LIMIT / 2
         if corner == 'nw' or corner == 'wn':
-            return Environment.X_LENGTH / 2, Environment.Y_LENGTH / 2
+            return Environment.X_LIMIT / 2, Environment.Y_LIMIT / 2
         if corner == 'ne' or corner == 'en':
-            return Environment.X_LENGTH / 2, -Environment.Y_LENGTH / 2
+            return Environment.X_LIMIT / 2, -Environment.Y_LIMIT / 2
         if corner == 'se' or corner == 'es':
-            return -Environment.X_LENGTH / 2, -Environment.Y_LENGTH / 2
+            return -Environment.X_LIMIT / 2, -Environment.Y_LIMIT / 2
 
     @staticmethod
     def is_terminal_state(coordinates, object_gripped):
@@ -89,6 +94,6 @@ class Environment:
         :return: bool
         """
         def get_limits(length): return length / 2 - Environment.ENV_BOUNDS_TOLERANCE  # functon to calculate the box boundaries
-        x_limit_reached = abs(coordinates[0]) > get_limits(Environment.X_LENGTH)  # x boundary reached
-        y_limit_reached = abs(coordinates[1]) > get_limits(Environment.Y_LENGTH)  # y boundary reached
+        x_limit_reached = abs(coordinates[0]) > get_limits(Environment.X_LIMIT)  # x boundary reached
+        y_limit_reached = abs(coordinates[1]) > get_limits(Environment.Y_LIMIT)  # y boundary reached
         return x_limit_reached or y_limit_reached or object_gripped # If one or both or the boundaries are reached --> terminal state
