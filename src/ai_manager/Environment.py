@@ -50,7 +50,7 @@ class Environment:
                 if abs(coordinate_x) > (Environment.X_LENGTH / 4) or abs(coordinate_y) > (Environment.Y_LENGTH / 4):
                     coordinates_in_center = False
         elif strategy == 'optimal' and image is not None:  # Before going to a random state, we check that there are pieces in this place
-            blob_detector = BlobDetector(x_length=Environment.X_LENGTH, y_length=Environment.X_LENGTH, columns=4, rows=4)
+            blob_detector = BlobDetector(x_length=Environment.X_LENGTH + 0.05, y_length=Environment.X_LENGTH + 0.05, columns=4, rows=4)
             optimal_quadrant = blob_detector.find_optimal_quadrant(image)
             optimal_point = blob_detector.quadrants_center[optimal_quadrant]
 
