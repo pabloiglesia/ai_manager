@@ -54,8 +54,11 @@ class Environment:
             optimal_quadrant = blob_detector.find_optimal_quadrant(image)
             optimal_point = blob_detector.quadrants_center[optimal_quadrant]
 
-            coordinate_x = optimal_point[0]
-            coordinate_y = optimal_point[1]
+            coordinate_x = optimal_point[0] * 0.056
+            coordinate_y = optimal_point[1] * 0.056
+            print (coordinate_x)
+            print (coordinate_y)
+            print(optimal_quadrant)
         else: # Totally random coordinates
             coordinate_x, coordinate_y = generate_random_coordinates()
 
