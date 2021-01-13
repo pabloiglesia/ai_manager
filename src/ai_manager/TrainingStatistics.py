@@ -24,8 +24,8 @@ class TrainingStatistics:
         self.coordinates_matrix = self.generate_coordinates_matrix()
 
     def generate_coordinates_matrix(self):
-        x_limit = Environment.X_LENGTH / 2
-        y_limit = Environment.Y_LENGTH / 2
+        x_limit = Environment.X_LIMIT / 2
+        y_limit = Environment.Y_LIMIT / 2
 
         matrix_width = 2 * math.ceil(x_limit / Environment.ACTION_DISTANCE)
         matrix_height = 2 * math.ceil(y_limit / Environment.ACTION_DISTANCE)
