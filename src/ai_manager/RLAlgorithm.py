@@ -66,7 +66,7 @@ class RLAlgorithm:
     """
 
     def __init__(self, batch_size=32, gamma=0.999, eps_start=1, eps_end=0.01, eps_decay=0.0005, target_update=10,
-                 memory_size=10000, lr=0.001, num_episodes=1000):
+                 memory_size=100000, lr=0.001, num_episodes=1000):
         """
 
         :param batch_size: Size of the batch used to train the network in every step
@@ -503,6 +503,7 @@ class RLAlgorithm:
         current_path = os.path.dirname(os.path.realpath(__file__))
         filename = RLAlgorithm.saving_name(batch_size, gamma, eps_start, eps_end, eps_decay, lr, random_strategy)
         filename = os.path.join(current_path, dir, filename)
+        print(filename)
         try:
             with open(filename, 'rb') as input:
                 rl_algorithm = pickle.load(input)
