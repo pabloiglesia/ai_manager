@@ -67,7 +67,7 @@ class RLAlgorithm:
 
     def __init__(self, object_gripped_reward=10, object_not_picked_reward=-10, out_of_limits_reward=-10,
                  horizontal_movement_reward=-1, batch_size=32, gamma=0.999, eps_start=1, eps_end=0.01, eps_decay=0.0005,
-                 target_update=10, memory_size=100000, lr=0.001, num_episodes=1000, self_training_others='optimal'):
+                 target_update=10, memory_size=100000, lr=0.001, num_episodes=1000, save_training_others='optimal'):
         """
 
         :param object_gripped_reward: Object gripped reward
@@ -96,7 +96,7 @@ class RLAlgorithm:
         self.memory_size = memory_size
         self.lr = lr
         self.num_episodes = num_episodes
-        self.self_training_others = self_training_others
+        self.self_training_others = save_training_others
 
         self.current_state = None  # Robot current state
         self.previous_state = None  # Robot previous state
