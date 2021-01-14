@@ -503,7 +503,6 @@ class RLAlgorithm:
         current_path = os.path.dirname(os.path.realpath(__file__))
         filename = RLAlgorithm.saving_name(batch_size, gamma, eps_start, eps_end, eps_decay, lr, random_strategy)
         filename = os.path.join(current_path, dir, filename)
-        print(filename)
         try:
             with open(filename, 'rb') as input:
                 rl_algorithm = pickle.load(input)
