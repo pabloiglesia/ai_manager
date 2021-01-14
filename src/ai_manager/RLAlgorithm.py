@@ -65,8 +65,9 @@ class RLAlgorithm:
 
     """
 
-    def __init__(self, batch_size=32, gamma=0.999, eps_start=1, eps_end=0.01, eps_decay=0.0005, target_update=10,
-                 memory_size=100000, lr=0.001, num_episodes=1000):
+    def __init__(self, object_gripped_reward=10, object_not_picked_reward=-10, out_of_limits_reward=-10,
+                 horizontal_movement_reward=-1, batch_size=32, gamma=0.999, eps_start=1, eps_end=0.01, eps_decay=0.0005,
+                 target_update=10, memory_size=100000, lr=0.001, num_episodes=1000):
         """
 
         :param batch_size: Size of the batch used to train the network in every step
@@ -99,7 +100,8 @@ class RLAlgorithm:
 
         # This tells PyTorch to use a GPU if its available, otherwise use the CPU
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Torch devide
-        self.em = self.EnvManager(self)  # Robot Environment Manager
+        self.em = self.EnvManager(self, object_gripped_reward, object_not_picked_reward, out_of_limits_reward,
+                     horizontal_movement_reward)  # Robot Environment Manager
         self.strategy = self.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay)  # Greede Strategy
         self.agent = self.Agent(self)  # RL Agent
         self.memory = self.ReplayMemory(self.memory_size)  # Replay Memory
@@ -228,11 +230,16 @@ class RLAlgorithm:
         current state of the robot.
         """
 
-        def __init__(self, rl_algorithm, image_size=256):
+        def __init__(self, rl_algorithm, object_gripped_reward, object_not_picked_reward, out_of_limits_reward,
+                     horizontal_movement_reward, image_size=256):
             """
             Initialization of an object
             :param rl_manager: RLAlgorithm object
             """
+            self.object_gripped_reward = object_gripped_reward
+            self.out_of_limits_reward = out_of_limits_reward
+            self.object_not_picked_reward = object_not_picked_reward
+            self.horizontal_movement_reward = horizontal_movement_reward
             self.device = rl_algorithm.device  # Torch device
             self.image_controller = ImageController()  # ImageController object to manage images
             self.actions = ['north', 'south', 'east', 'west', 'pick']  # Possible actions of the objects
@@ -264,24 +271,24 @@ class RLAlgorithm:
                 self.rl_algorithm.episode_done = True  # Set the episode_done variable to True to end up the episode
                 episode_done = True
                 if object_gripped:  # If object_gripped is True, the episode has ended successfully
-                    reward = 100
+                    reward = self.object_gripped_reward
                     self.rl_algorithm.statistics.add_succesful_episode(True)  # Saving episode successful statistic
                     self.rl_algorithm.statistics.increment_picks()  # Increase of the statistics cpunter
                     rospy.loginfo("Episode ended: Object gripped!")
                     self.image_controller.record_image(previous_image, True)  # Saving the falure state image
                 else:  # Otherwise the robot has reached the limits of the environment
-                    reward = -10
+                    reward = self.out_of_limits_reward
                     self.rl_algorithm.statistics.add_succesful_episode(False)  # Saving episode failure statistic
                     rospy.loginfo("Episode ended: Environment limits reached!")
             else:  # If it is not a Terminal State
                 episode_done = False
                 if self.rl_algorithm.current_action == 'pick':  # if it is not the first action and action is pick
-                    reward = -10
+                    reward = self.object_not_picked_reward
                     self.image_controller.record_image(previous_image, False)  # Saving the falure state image
                     self.rl_algorithm.statistics.increment_picks()  # Increase of the statistics counter
                 else:  # otherwise
                     self.rl_algorithm.statistics.fill_coordinates_matrix(current_coordinates)
-                    reward = -1
+                    reward = self.horizontal_movement_reward
 
             self.rl_algorithm.statistics.add_reward(reward)  # Add reward to the algorithm statistics
             return reward, episode_done
@@ -461,15 +468,15 @@ class RLAlgorithm:
         if is_ipython: display.clear_output(wait=True)
 
     @staticmethod
-    def saving_name(batch_size, gamma, eps_start, eps_end, eps_decay, lr, random_strategy=''):
+    def saving_name(batch_size, gamma, eps_start, eps_end, eps_decay, lr, others=''):
         return 'bs{}_g{}_es{}_ee{}_ed{}_lr_{}_{}.pkl'.format(
-            batch_size, gamma, eps_start, eps_end, eps_decay, lr, random_strategy
+            batch_size, gamma, eps_start, eps_end, eps_decay, lr, others
         )
 
-    def save_training(self, dir='trainings/', random_strategy='optimal'):
+    def save_training(self, dir='trainings/', others='optimal'):
 
         filename = self.saving_name(self.batch_size, self.gamma, self.eps_start, self.eps_end, self.eps_decay, self.lr,
-                                    random_strategy)
+                                    others)
 
         def create_if_not_exist(filename, dir):
             current_path = os.path.dirname(os.path.realpath(__file__))
@@ -499,9 +506,9 @@ class RLAlgorithm:
 
     @staticmethod
     def recover_training(batch_size=32, gamma=0.999, eps_start=1, eps_end=0.01,
-                         eps_decay=0.0005, lr=0.001, random_strategy='optimal', dir='trainings/',):
+                         eps_decay=0.0005, lr=0.001, others='optimal', dir='trainings/', ):
         current_path = os.path.dirname(os.path.realpath(__file__))
-        filename = RLAlgorithm.saving_name(batch_size, gamma, eps_start, eps_end, eps_decay, lr, random_strategy)
+        filename = RLAlgorithm.saving_name(batch_size, gamma, eps_start, eps_end, eps_decay, lr, others)
         filename = os.path.join(current_path, dir, filename)
         try:
             with open(filename, 'rb') as input:
