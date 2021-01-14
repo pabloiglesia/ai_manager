@@ -100,6 +100,21 @@ This algorithm is implemented in the class RLAlgorithm.py following this schema:
 To understand better all these steps is highly recommended to follow the [DeepLizard's Reinforcement Learning course.](
 https://deeplizard.com/learn/playlist/PLZbbT5o_s2xoWNVdDudn51XM8lOuZ_Njv)
 
+### RLAlgorithm.py
+
+In RLAlgorithm.py, we define the RLAlgorithm class, which also have several inner classes. These classes are:
+ - **Agent**: Inner class used to define the agent. The most important thing about this class is the **select_action**
+   method, which is the one used to calculate the action using whether **Exploration** or **Exploitation**.
+ - **DQN**: Inner class used to define the **target and policy networks**. It defines a neural network that have to be 
+   called using the vector of features calculated by passing the image through the feature extractor net.
+ - **EnvManager**:
+ - **EpsilonGreedyStrategy**:
+ - **QValues**:
+ - **ReplayMemory**:
+
+
+
+
 
 
 

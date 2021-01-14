@@ -14,7 +14,7 @@ from Environment import Environment
 
 rospy.init_node('ai_manager', anonymous=True)  # ROS node initialization
 # Global Image Controller
-RL_ALGORITHM = RLAlgorithm.recover_training(batch_size=256, lr=0.0001)
+RL_ALGORITHM = RLAlgorithm.recover_training(batch_size=256, others='optimal_original_rewards')
 
 def handle_get_actions(req):
     """
