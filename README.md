@@ -107,10 +107,17 @@ In RLAlgorithm.py, we define the RLAlgorithm class, which also have several inne
    method, which is the one used to calculate the action using whether **Exploration** or **Exploitation**.
  - **DQN**: Inner class used to define the **target and policy networks**. It defines a neural network that have to be 
    called using the vector of features calculated by passing the image through the feature extractor net.
- - **EnvManager**:
- - **EpsilonGreedyStrategy**:
- - **QValues**:
- - **ReplayMemory**:
+ - **EnvManager**: Inner Class used to manage the RL environment. It is used to perform actions such as **calculate 
+   rewards** or **gather the current state** of the robot. The most important methods are:
+   - **calculate_reward**, which **calculates the reward** of each action depending on the initial and final state.
+   - **extract_image_features**, which is used to transform the image to extract image features by passing it through a 
+     **pre-trained CNN network** that can be found in ImageModel Module.
+ - **EpsilonGreedyStrategy**: Inner Class used to perform the Epsilon greede strategy
+ - **QValues**: Inner class used to **get the predicted q-values** from the policy_net for the specific state-action pairs 
+   passed in. States and actions are the state-action pairs that were sampled from replay memory.
+ - **ReplayMemory**: Inner Class used to create a Replay Memory for the RL algorithm
+
+All these 
 
 
 
