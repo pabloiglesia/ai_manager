@@ -101,6 +101,9 @@ To understand better all these steps is highly recommended to follow the [DeepLi
 https://deeplizard.com/learn/playlist/PLZbbT5o_s2xoWNVdDudn51XM8lOuZ_Njv)
 
 ### RLAlgorithm.py
+RLAlgorithm.py is the most important file of this module because it is the place where the algorithm implementation is
+done. Several classes have been used to implement the algorithm. Some of these classes are defined inside RLAlgorithm 
+(inner classes) and others are normal outer classes.
 
 In RLAlgorithm.py, we define the RLAlgorithm class, which also have several inner classes. These classes are:
  - **Agent**: Inner class used to define the agent. The most important thing about this class is the **select_action**
@@ -116,8 +119,43 @@ In RLAlgorithm.py, we define the RLAlgorithm class, which also have several inne
  - **QValues**: Inner class used to **get the predicted q-values** from the policy_net for the specific state-action pairs 
    passed in. States and actions are the state-action pairs that were sampled from replay memory.
  - **ReplayMemory**: Inner Class used to create a Replay Memory for the RL algorithm
+ - **Environment**: Class where the RL Environment is defined
+ - **TrainingStatistics**: Class used to store all the training statistics. If it is run separately, It will plot a set
+   of graphs to represent visually the training evolution.
+ - **ImageModel**: Class used to extract the image features used in the training. You can find this class in [this 
+   repository](https://github.com/PilarHB/ImageProcessing), which store another module of this project.
+ - **ImageController**: Class used to gather and store the relative state images from a ros topic.
 
-All these 
+In order to perform the algorithm there are two important structures that are defined in the beginning of this file.
+These structures are:
+ - **State**, which defines all the things needed to represent a State:
+    - Coordinates of the robot. 
+    - Image.
+    - Boolean telling if an object has been gripped. 
+ - **Experience**, which represents the experience of the agent in a given moment:
+     - The action.
+     - The original state.
+     - The original coordinates.
+     - The final state.
+     - The final coordinates.
+     - The reward obtained for taking this action.
+     - Boolean telling whether the final state is terminal or not.
+
+Finally, there are some important methods in RLAlgorithm class that it is important to take into account:
+ - **save_training**: Method used to **save the training** so that it can be retaken later. It uses pickle library to do so 
+   and stores the whole RLAlgorithm object because all the context is needed to retake the training.
+   This method also stores a pickle a **TrainingStatistics object** for them to be accessible easily.
+ - **recover_training**: Method used to recover saved trainings. If it doesn't find a file with the name given, it 
+   creates a new RLAlgorithm object.
+ - **train_net**: Method used to train both the train and target Deep Q Networks. We train the network minimizing the 
+   loss between the current Q-values of the action-state tuples and the target Q-values. Target Q-values are calculated 
+   using thew Bellman's equation:
+
+   `q*(state, action) = Reward + gamma * max( q*(next_state, next_action) )`
+ - **next_training_step**: This method implements the Reinforcement Learning algorithm to control the UR3 robot.  As the 
+   algorithm is prepared to be executed in real life, rewards and final states cannot be received until the action is 
+   finished, which is the beginning of next loop. Therefore, during an execution of this function, an action will be 
+   calculated and the previous action, its reward and its final state will be stored in the replay memory.
 
 
 
