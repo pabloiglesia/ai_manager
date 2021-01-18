@@ -483,9 +483,14 @@ class RLAlgorithm:
         return 'bs{}_g{}_es{}_ee{}_ed{}_lr_{}_{}.pkl'.format(
             batch_size, gamma, eps_start, eps_end, eps_decay, lr, others
         )
-
-    def save_training(self, dir='trainings/', others='optimal'):
-
+    def save_training(self, dir='trainings/'):
+        """
+        Method used to save the training so that it can be retaken later. It uses pickle library to do so and stores the
+        whole RLAlgorithm object because all the context is needed to retake the training.
+        This method also stores a pickle a TrainingStatistics object for them to be accessible easily.
+        :param dir: relative directory where we want to store the Algorithm progress
+        :return:
+        """
         filename = self.saving_name(self.batch_size, self.gamma, self.eps_start, self.eps_end, self.eps_decay, self.lr,
                                     self.self_training_others)
 
@@ -511,7 +516,7 @@ class RLAlgorithm:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
         rospy.loginfo("Saving Statistics...")
-        filename='{}_stats.pkl'.format(filename.split('.pkl')[0])
+        filename='{}{}_stats.pkl'.format(dir, filename.split('.pkl')[0])
         self.statistics.save(filename=filename)
 
         rospy.loginfo("Training saved!")
@@ -519,6 +524,19 @@ class RLAlgorithm:
     @staticmethod
     def recover_training(batch_size=32, gamma=0.999, eps_start=1, eps_end=0.01,
                          eps_decay=0.0005, lr=0.001, others='optimal', dir='trainings/', ):
+        """
+        Method used to recover saved trainings. If it doesn't find a file with the name given, it creates a new
+        RLAlgorithm object.
+        :param batch_size: batch_size RLAlgorithm parameter
+        :param gamma: gamma RLAlgorithm parameter
+        :param eps_start: eps_start RLAlgorithm parameter
+        :param eps_end: eps_end RLAlgorithm parameter
+        :param eps_decay: eps_decay RLAlgorithm parameter
+        :param lr: lr RLAlgorithm parameter
+        :param others: parameter used to modify the name of the progress file
+        :param dir: relative directory where we want to restore the Algorithm progress
+        :return:
+        """
         current_path = os.path.dirname(os.path.realpath(__file__))
         filename = RLAlgorithm.saving_name(batch_size, gamma, eps_start, eps_end, eps_decay, lr, others)
         filename = os.path.join(current_path, dir, filename)
