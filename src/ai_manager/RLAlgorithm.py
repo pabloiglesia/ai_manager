@@ -65,10 +65,15 @@ class RLAlgorithm:
 
     """
 
-    def __init__(self, batch_size=32, gamma=0.999, eps_start=1, eps_end=0.01, eps_decay=0.0005, target_update=10,
-                 memory_size=100000, lr=0.001, num_episodes=1000):
+    def __init__(self, object_gripped_reward=10, object_not_picked_reward=-10, out_of_limits_reward=-10,
+                 horizontal_movement_reward=-1, batch_size=32, gamma=0.999, eps_start=1, eps_end=0.01, eps_decay=0.0005,
+                 target_update=10, memory_size=100000, lr=0.001, num_episodes=1000, save_training_others='optimal'):
         """
 
+        :param object_gripped_reward: Object gripped reward
+        :param object_not_picked_reward: Object not picked reward
+        :param out_of_limits_reward: Out of limits reward
+        :param horizontal_movement_reward: Horizontal movement reward
         :param batch_size: Size of the batch used to train the network in every step
         :param gamma: discount factor used in the Bellman equation
         :param eps_start: Greedy strategy epsilon start (Probability of random choice)
@@ -79,6 +84,7 @@ class RLAlgorithm:
         :param memory_size: Capacity of the replay memory
         :param lr: Learning rate of the Deep Learning algorithm
         :param num_episodes:  Number of episodes on training
+        :param self_training_others: Parameter used to modify the filename of the training while saving
         """
 
         self.batch_size = batch_size
@@ -90,6 +96,7 @@ class RLAlgorithm:
         self.memory_size = memory_size
         self.lr = lr
         self.num_episodes = num_episodes
+        self.self_training_others = save_training_others
 
         self.current_state = None  # Robot current state
         self.previous_state = None  # Robot previous state
@@ -99,7 +106,8 @@ class RLAlgorithm:
 
         # This tells PyTorch to use a GPU if its available, otherwise use the CPU
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Torch devide
-        self.em = self.EnvManager(self)  # Robot Environment Manager
+        self.em = self.EnvManager(self, object_gripped_reward, object_not_picked_reward, out_of_limits_reward,
+                     horizontal_movement_reward)  # Robot Environment Manager
         self.strategy = self.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay)  # Greede Strategy
         self.agent = self.Agent(self)  # RL Agent
         self.memory = self.ReplayMemory(self.memory_size)  # Replay Memory
@@ -228,11 +236,21 @@ class RLAlgorithm:
         current state of the robot.
         """
 
-        def __init__(self, rl_algorithm, image_size=256):
+        def __init__(self, rl_algorithm, object_gripped_reward, object_not_picked_reward, out_of_limits_reward,
+                     horizontal_movement_reward):
             """
             Initialization of an object
             :param rl_manager: RLAlgorithm object
+            :param object_gripped_reward: Object gripped reward
+            :param object_not_picked_reward: Object not picked reward
+            :param out_of_limits_reward: Out of limits reward
+            :param horizontal_movement_reward: Horizontal movement reward
             """
+            self.object_gripped_reward = object_gripped_reward
+            self.out_of_limits_reward = out_of_limits_reward
+            self.object_not_picked_reward = object_not_picked_reward
+            self.horizontal_movement_reward = horizontal_movement_reward
+
             self.device = rl_algorithm.device  # Torch device
             self.image_controller = ImageController()  # ImageController object to manage images
             self.actions = ['north', 'south', 'east', 'west', 'pick']  # Possible actions of the objects
@@ -249,7 +267,6 @@ class RLAlgorithm:
                 self.feature_extraction_model)  # Size of the image after performing some transformations
 
             self.rl_algorithm = rl_algorithm
-            self.image_size = image_size
             self.gather_image_state()  # Retrieve initial state image
 
         def calculate_reward(self, previous_image):
@@ -264,41 +281,42 @@ class RLAlgorithm:
                 self.rl_algorithm.episode_done = True  # Set the episode_done variable to True to end up the episode
                 episode_done = True
                 if object_gripped:  # If object_gripped is True, the episode has ended successfully
-                    reward = 100
+                    reward = self.object_gripped_reward
                     self.rl_algorithm.statistics.add_succesful_episode(True)  # Saving episode successful statistic
                     self.rl_algorithm.statistics.increment_picks()  # Increase of the statistics cpunter
                     rospy.loginfo("Episode ended: Object gripped!")
                     self.image_controller.record_image(previous_image, True)  # Saving the falure state image
                 else:  # Otherwise the robot has reached the limits of the environment
-                    reward = -10
+                    reward = self.out_of_limits_reward
                     self.rl_algorithm.statistics.add_succesful_episode(False)  # Saving episode failure statistic
                     rospy.loginfo("Episode ended: Environment limits reached!")
             else:  # If it is not a Terminal State
                 episode_done = False
                 if self.rl_algorithm.current_action == 'pick':  # if it is not the first action and action is pick
-                    reward = -10
+                    reward = self.object_not_picked_reward
                     self.image_controller.record_image(previous_image, False)  # Saving the falure state image
                     self.rl_algorithm.statistics.increment_picks()  # Increase of the statistics counter
                 else:  # otherwise
                     self.rl_algorithm.statistics.fill_coordinates_matrix(current_coordinates)
-                    reward = -1
+                    reward = self.horizontal_movement_reward
 
             self.rl_algorithm.statistics.add_reward(reward)  # Add reward to the algorithm statistics
             return reward, episode_done
 
         def gather_image_state(self):
             """
-            This method gather information about the ur3 robot state by reading several ROS topics
-            :param img_controller: class which will allow us to save sensor_msgs images
+            This method gather the relative state of the robot by retrieving an image using the image_controller class,
+            which reads the image from the ROS topic specified.
             """
             previous_image = self.image
             self.image, self.image_width, self.image_height = self.image_controller.get_image()  # We retrieve state image
-            self.image_tensor = self.get_processed_screen(self.image)
+            self.image_tensor = self.extract_image_features(self.image)
             return previous_image
 
-        def get_processed_screen(self, image):
+        def extract_image_features(self, image):
             """
-            Method used to transformate the image to a spected tensor that Neural Network is specting
+            Method used to transform the image to extract image features by passing it through the image_model CNN
+            network
             :param image_raw: Image
             :return:
             """
@@ -461,15 +479,20 @@ class RLAlgorithm:
         if is_ipython: display.clear_output(wait=True)
 
     @staticmethod
-    def saving_name(batch_size, gamma, eps_start, eps_end, eps_decay, lr, random_strategy=''):
+    def saving_name(batch_size, gamma, eps_start, eps_end, eps_decay, lr, others=''):
         return 'bs{}_g{}_es{}_ee{}_ed{}_lr_{}_{}.pkl'.format(
-            batch_size, gamma, eps_start, eps_end, eps_decay, lr, random_strategy
+            batch_size, gamma, eps_start, eps_end, eps_decay, lr, others
         )
-
-    def save_training(self, dir='trainings/', random_strategy='optimal'):
-
+    def save_training(self, dir='trainings/'):
+        """
+        Method used to save the training so that it can be retaken later. It uses pickle library to do so and stores the
+        whole RLAlgorithm object because all the context is needed to retake the training.
+        This method also stores a pickle a TrainingStatistics object for them to be accessible easily.
+        :param dir: relative directory where we want to store the Algorithm progress
+        :return:
+        """
         filename = self.saving_name(self.batch_size, self.gamma, self.eps_start, self.eps_end, self.eps_decay, self.lr,
-                                    random_strategy)
+                                    self.self_training_others)
 
         def create_if_not_exist(filename, dir):
             current_path = os.path.dirname(os.path.realpath(__file__))
@@ -484,24 +507,38 @@ class RLAlgorithm:
 
         rospy.loginfo("Saving training...")
 
-        filename = create_if_not_exist(filename, dir)
+        abs_filename = create_if_not_exist(filename, dir)
 
         self.em.image_model = None
         self.em.feature_extraction_model = None
 
-        with open(filename, 'wb+') as output:  # Overwrites any existing file.
+        with open(abs_filename, 'wb+') as output:  # Overwrites any existing file.
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
         rospy.loginfo("Saving Statistics...")
-        self.statistics.save()
+        filename='{}{}_stats.pkl'.format(dir, filename.split('.pkl')[0])
+        self.statistics.save(filename=filename)
 
         rospy.loginfo("Training saved!")
 
     @staticmethod
     def recover_training(batch_size=32, gamma=0.999, eps_start=1, eps_end=0.01,
-                         eps_decay=0.0005, lr=0.001, random_strategy='optimal', dir='trainings/',):
+                         eps_decay=0.0005, lr=0.001, others='optimal', dir='trainings/', ):
+        """
+        Method used to recover saved trainings. If it doesn't find a file with the name given, it creates a new
+        RLAlgorithm object.
+        :param batch_size: batch_size RLAlgorithm parameter
+        :param gamma: gamma RLAlgorithm parameter
+        :param eps_start: eps_start RLAlgorithm parameter
+        :param eps_end: eps_end RLAlgorithm parameter
+        :param eps_decay: eps_decay RLAlgorithm parameter
+        :param lr: lr RLAlgorithm parameter
+        :param others: parameter used to modify the name of the progress file
+        :param dir: relative directory where we want to restore the Algorithm progress
+        :return:
+        """
         current_path = os.path.dirname(os.path.realpath(__file__))
-        filename = RLAlgorithm.saving_name(batch_size, gamma, eps_start, eps_end, eps_decay, lr, random_strategy)
+        filename = RLAlgorithm.saving_name(batch_size, gamma, eps_start, eps_end, eps_decay, lr, others)
         filename = os.path.join(current_path, dir, filename)
         try:
             with open(filename, 'rb') as input:
@@ -517,7 +554,7 @@ class RLAlgorithm:
         except IOError:
             rospy.loginfo("There is no Training saved. New object has been created")
             return RLAlgorithm(batch_size=batch_size, gamma=gamma, eps_start=eps_start, eps_end=eps_end,
-                         eps_decay=eps_decay, lr=lr)
+                         eps_decay=eps_decay, lr=lr, save_training_others=others)
 
     def train_net(self):
         """
