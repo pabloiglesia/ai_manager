@@ -28,12 +28,13 @@ import pickle
 
 State = namedtuple(  # State information namedtuple
     'State',
-    ('coordinate_x', 'coordinate_y', 'object_gripped', 'image_raw')
+    ('coordinate_x', 'coordinate_y', 'pick_probability', 'object_gripped', 'image_raw')
 )
 
 Experience = namedtuple(  # Replay Memory Experience namedtuple
     'Experience',
-    ('state', 'coordinates', 'action', 'next_state', 'next_coordinates', 'reward', 'is_final_state')
+    ('state', 'coordinates', 'pick_probability', 'action', 'next_state', 'next_coordinates', 'next_pick_probability',
+     'reward', 'is_final_state')
 )
 
 
@@ -67,7 +68,8 @@ class RLAlgorithm:
 
     def __init__(self, object_gripped_reward=10, object_not_picked_reward=-10, out_of_limits_reward=-10,
                  horizontal_movement_reward=-1, batch_size=32, gamma=0.999, eps_start=1, eps_end=0.01, eps_decay=0.0005,
-                 target_update=10, memory_size=100000, lr=0.001, num_episodes=1000, save_training_others='optimal'):
+                 target_update=10, memory_size=100000, lr=0.001, num_episodes=1000, include_pick_prediction=False,
+                 save_training_others='optimal'):
         """
 
         :param object_gripped_reward: Object gripped reward
@@ -84,6 +86,7 @@ class RLAlgorithm:
         :param memory_size: Capacity of the replay memory
         :param lr: Learning rate of the Deep Learning algorithm
         :param num_episodes:  Number of episodes on training
+        :param include_pick_prediction: Use the image model pick prediction as input of the DQN
         :param self_training_others: Parameter used to modify the filename of the training while saving
         """
 
@@ -96,7 +99,8 @@ class RLAlgorithm:
         self.memory_size = memory_size
         self.lr = lr
         self.num_episodes = num_episodes
-        self.self_training_others = save_training_others
+        self.include_pick_prediction = include_pick_prediction
+        self.save_training_others = save_training_others
 
         self.current_state = None  # Robot current state
         self.previous_state = None  # Robot previous state
@@ -107,16 +111,18 @@ class RLAlgorithm:
         # This tells PyTorch to use a GPU if its available, otherwise use the CPU
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Torch devide
         self.em = self.EnvManager(self, object_gripped_reward, object_not_picked_reward, out_of_limits_reward,
-                     horizontal_movement_reward)  # Robot Environment Manager
+                                  horizontal_movement_reward)  # Robot Environment Manager
         self.strategy = self.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay)  # Greede Strategy
         self.agent = self.Agent(self)  # RL Agent
         self.memory = self.ReplayMemory(self.memory_size)  # Replay Memory
         self.statistics = TrainingStatistics()  # Training statistics
 
         self.policy_net = self.DQN(self.em.image_tensor_size,
-                                   self.em.num_actions_available()).to(self.device)  # Policy Q Network
+                                   self.em.num_actions_available(),
+                                   self.include_pick_prediction).to(self.device)  # Policy Q Network
         self.target_net = self.DQN(self.em.image_tensor_size,
-                                   self.em.num_actions_available()).to(self.device)  # Target Q Network
+                                   self.em.num_actions_available(),
+                                   self.include_pick_prediction).to(self.device)  # Target Q Network
         self.target_net.load_state_dict(self.policy_net.state_dict())  # Target net has to be the same as policy network
         self.target_net.eval()  # Target net has to be the same as policy network
         self.optimizer = optim.Adam(params=self.policy_net.parameters(), lr=self.lr)  # Q Networks optimizer
@@ -165,7 +171,8 @@ class RLAlgorithm:
                     try:
                         with torch.no_grad():  # We calculate the action using the Policy Q Network
                             action = policy_net(state.image_raw, torch.tensor(
-                                [[state.coordinate_x, state.coordinate_y]], device=self.device)).argmax(dim=1).to(
+                                [[state.coordinate_x, state.coordinate_y]], device=self.device),
+                                                state.pick_probability).argmax(dim=1).to(
                                 self.device)  # exploit
                     except:
                         print("Ha habido un error")
@@ -180,54 +187,32 @@ class RLAlgorithm:
         Class to create a Deep Q Learning Neural Network
         """
 
-        def __init__(self, image_tensor_size, num_actions, kernel_size=5, stride=2):
+        def __init__(self, image_tensor_size, num_actions, include_pick_prediction):
             """
 
             :param image_tensor_size: Size of the input tensor
             :param num_actions: Number of actions, which is the output of the Neural Network
-            :param kernel_size: Kernel Size
-            :param stride: Stride parameter
             """
             super(RLAlgorithm.DQN, self).__init__()
-            # Different Convolutional Steps to retrieve the image features
-            # self.conv1 = nn.Conv2d(3, 16, kernel_size=kernel_size, stride=stride)
-            # self.bn1 = nn.BatchNorm2d(16)
-            # self.conv2 = nn.Conv2d(16, 32, kernel_size=kernel_size, stride=stride)
-            # self.bn2 = nn.BatchNorm2d(32)
-            # self.conv3 = nn.Conv2d(32, 32, kernel_size=kernel_size, stride=stride)
-            # self.bn3 = nn.BatchNorm2d(32)
-            #
-            # # Number of Linear input connections depends on output of conv2d layers
-            # # and therefore the input image size, so compute it.
-            # def conv2d_size_out(size, kernel_size=kernel_size, stride=stride):
-            #     return (size - (kernel_size - 1) - 1) // stride + 1
-            #
-            # convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(image_tensor_size(2))))  # Width of the conv output
-            # convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(image_tensor_size(3))))  # Height of the conv output
-            # # convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(img_width)))
-            # # convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(img_height)))
-            #
-            # # Linear Step where we include the image features and the current robot coordinates
-            # linear_input_size = (convw * convh * 32) + 2
+
             self.linear1 = nn.Linear(image_tensor_size, int(image_tensor_size / 2))
             self.linear2 = nn.Linear(int(image_tensor_size / 2), int(image_tensor_size / 4))
-            self.linear3 = nn.Linear(int(image_tensor_size / 4) + 2, num_actions)
+            extra_features = 2  # coordinates
+            if include_pick_prediction:
+                extra_features = 3  # pick prediction
+            self.linear3 = nn.Linear(int(image_tensor_size / 4) + extra_features, num_actions)
             self.linear = nn.Linear(image_tensor_size + 2, num_actions)
 
         # Called with either one element to determine next action, or a batch
         # during optimization. Returns tensor([[left0exp,right0exp]...]).
-        def forward(self, image_raw, coordinates):
-            # features1 = F.relu(self.bn1(self.conv1(image_raw)))
-            # features2 = F.relu(self.bn2(self.conv2(features1)))
-            # features3 = F.relu(self.bn3(self.conv3(features2)))
-            #
-            # linear_input = features3.view(features3.size(0), -1)
-            # linear_input = torch.cat((linear_input, coordinates), 1)
+        def forward(self, image_raw, coordinates, pick_probability):
 
             output = self.linear1(image_raw)
             output = self.linear2(output)
-            output = torch.cat((output, coordinates), 1)
-            # output = torch.cat((image_raw, coordinates), 1)
+            if pick_probability:
+                output = torch.cat((output, coordinates, pick_probability), 1)
+            else:
+                output = torch.cat((output, coordinates), 1)
             return self.linear3(output)
 
     class EnvManager:
@@ -258,6 +243,7 @@ class RLAlgorithm:
             self.image_width = None  # Retrieved Images Width
             self.image = None  # Current image ROS message
             self.image_tensor = None  # Current image tensor
+            self.pick_probability = None  # Current image tensor
 
             self.model_name = 'model-epoch=05-val_loss=0.36-weights7y3_unfreeze2.ckpt'
             # self.model_name = 'resnet50_freezed.ckpt'
@@ -311,7 +297,9 @@ class RLAlgorithm:
             """
             previous_image = self.image
             self.image, self.image_width, self.image_height = self.image_controller.get_image()  # We retrieve state image
-            self.image_tensor = self.extract_image_features(self.image)
+            self.image_tensor, pick_probability = self.extract_image_features(self.image)
+            if self.rl_algorithm.include_pick_prediction:
+                self.pick_probability = pick_probability
             return previous_image
 
         def extract_image_features(self, image):
@@ -321,9 +309,9 @@ class RLAlgorithm:
             :param image_raw: Image
             :return:
             """
-            features = self.image_model.evaluate_image(image, self.feature_extraction_model)
+            features, pick_prediction = self.image_model.evaluate_image(image, self.feature_extraction_model)
             features = torch.from_numpy(features)
-            return features.to(self.device)
+            return features.to(self.device), pick_prediction[1].to(self.device)
 
         def num_actions_available(self):
             """
@@ -364,7 +352,7 @@ class RLAlgorithm:
         """
 
         @staticmethod
-        def get_current(policy_net, states, coordinates, actions):
+        def get_current(policy_net, states, coordinates, actions, pick_probabilities):
             """
             With the current state of the policy network, it calculates the q_values of
             :param policy_net: policy network used to decide the actions
@@ -373,10 +361,10 @@ class RLAlgorithm:
             :param actions: Set of taken actions
             :return:
             """
-            return policy_net(states, coordinates).gather(dim=1, index=actions.unsqueeze(-1))
+            return policy_net(states, coordinates, pick_probabilities).gather(dim=1, index=actions.unsqueeze(-1))
 
         @staticmethod
-        def get_next(target_net, next_states, next_coordinates, is_final_state):
+        def get_next(target_net, next_states, next_coordinates, next_pick_probabilities, is_final_state):
             """
             Calculate the maximum q-value predicted by the target_net among all possible next actions.
             If the action has led to a terminal state, next reward will be 0. If not, it is calculated using the target
@@ -393,9 +381,12 @@ class RLAlgorithm:
             non_final_state_locations = (is_final_state == False)  # Non final state index locations are calculated
             non_final_states = next_states[non_final_state_locations]  # non final state images
             non_final_coordinates = next_coordinates[non_final_state_locations]  # non final coordinates
+            non_final_pick_probabilities = next_pick_probabilities[
+                non_final_state_locations]  # non final pick probabilities
             # Max q values of the non final states are calculated using the target net
-            q_values[non_final_state_locations] = target_net(non_final_states, non_final_coordinates).max(dim=1)[
-                0].detach()
+            q_values[non_final_state_locations] = \
+                target_net(non_final_states, non_final_coordinates, non_final_pick_probabilities).max(dim=1)[
+                    0].detach()
             return q_values
 
     class ReplayMemory:
@@ -455,9 +446,12 @@ class RLAlgorithm:
         next_states = torch.cat(batch.next_state)
         coordinates = torch.cat(batch.coordinates)
         next_coordinates = torch.cat(batch.next_coordinates)
+        pick_probabilities = torch.cat(batch.pick_probability)
+        next_pick_probabilities = torch.cat(batch.next_pick_probability)
         is_final_state = torch.cat(batch.is_final_state)
 
-        return states, coordinates, actions, rewards, next_states, next_coordinates, is_final_state
+        return states, coordinates, pick_probabilities, actions, rewards, next_states, next_coordinates, \
+               next_pick_probabilities, is_final_state
 
     @staticmethod
     def saving_name(batch_size, gamma, eps_start, eps_end, eps_decay, lr, others=''):
@@ -468,7 +462,7 @@ class RLAlgorithm:
     def save_training(self, dir='trainings/', others='optimal'):
 
         filename = self.saving_name(self.batch_size, self.gamma, self.eps_start, self.eps_end, self.eps_decay, self.lr,
-                                    self.self_training_others)
+                                    self.save_training_others)
 
         def create_if_not_exist(filename, dir):
             current_path = os.path.dirname(os.path.realpath(__file__))
@@ -494,7 +488,7 @@ class RLAlgorithm:
         rospy.loginfo("Saving Statistics...")
         print(filename)
 
-        filename='trainings/{}_stats.pkl'.format(filename.split('.pkl')[0])
+        filename = 'trainings/{}_stats.pkl'.format(filename.split('.pkl')[0])
         self.statistics.save(filename=filename)
 
         rospy.loginfo("Training saved!")
@@ -519,7 +513,7 @@ class RLAlgorithm:
         except IOError:
             rospy.loginfo("There is no Training saved. New object has been created")
             return RLAlgorithm(batch_size=batch_size, gamma=gamma, eps_start=eps_start, eps_end=eps_end,
-                         eps_decay=eps_decay, lr=lr, save_training_others=others)
+                               eps_decay=eps_decay, lr=lr, save_training_others=others)
 
     def train_net(self):
         """
@@ -533,12 +527,15 @@ class RLAlgorithm:
         # If there are at least as much experiences stored as the batch size
         if self.memory.can_provide_sample(self.batch_size):
             experiences = self.memory.sample(self.batch_size)  # Retrieve the experiences
-            states, coordinates, actions, rewards, next_states, next_coordinates, is_final_state = self.extract_tensors(
-                experiences)  # We split the batch of experience into different tensors
+            # We split the batch of experience into different tensors
+            states, coordinates, pick_probabilities, actions, rewards, next_states, next_coordinates, \
+                next_pick_probabilities, is_final_state = self.extract_tensors(experiences)
             # To compute the loss, current_q_values and target_q_values have to be calculated
-            current_q_values = self.QValues.get_current(self.policy_net, states, coordinates, actions)
+            current_q_values = self.QValues.get_current(self.policy_net, states, coordinates, actions,
+                                                        pick_probabilities)
             # next_q_values is the maximum Q-value of each future state
-            next_q_values = self.QValues.get_next(self.target_net, next_states, next_coordinates, is_final_state)
+            next_q_values = self.QValues.get_next(self.target_net, next_states, next_coordinates,
+                                                  next_pick_probabilities, is_final_state)
             target_q_values = (next_q_values * self.gamma) + rewards
 
             loss = F.mse_loss(current_q_values, target_q_values.unsqueeze(1))  # Loss is calculated
@@ -568,13 +565,13 @@ class RLAlgorithm:
         previous_action_idx = self.current_action_idx  # Previous action index to store in the Replay Memory
         previous_image = self.em.gather_image_state()  # Gathers current state image
 
-        self.current_state = State(current_coordinates[0], current_coordinates[1], object_gripped,
-                                   self.em.image_tensor)  # Updates current_state
+        self.current_state = State(current_coordinates[0], current_coordinates[1], self.em.pick_probability,
+                                   object_gripped, self.em.image_tensor)  # Updates current_state
 
         # Calculates previous action reward an establish whether the current state is terminal or not
         previous_reward, is_final_state = self.em.calculate_reward(previous_image)
         action, random_action = self.agent.select_action(self.current_state,
-                                          self.policy_net)  # Calculates action
+                                                         self.policy_net)  # Calculates action
 
         # There are some defined rules that the next action have to accomplish depending on the previous action
         action_ok = False
@@ -602,11 +599,10 @@ class RLAlgorithm:
                 action_ok = True
             else:
                 action, random_action = self.agent.select_action(self.current_state,
-                                                  self.policy_net)  # Calculates action
+                                                                 self.policy_net)  # Calculates action
 
         if random_action:
             self.statistics.random_action()  # Recolecting statistics
-
 
         # Random_state actions are used just to initialize the environment to a random position, so it is not taken into
         # account while storing state information in the Replay Memory.
@@ -617,10 +613,12 @@ class RLAlgorithm:
                     self.previous_state.image_raw,  # Initial state image
                     torch.tensor([[self.previous_state.coordinate_x, self.previous_state.coordinate_y]],
                                  device=self.device),  # Initial coordinates
+                    self.previous_state.pick_probability,
                     torch.tensor([previous_action_idx], device=self.device),  # Action taken
                     self.current_state.image_raw,  # Final state image
                     torch.tensor([[self.current_state.coordinate_x,
                                    self.current_state.coordinate_y]],
+                                 self.current_state.pick_probability,
                                  device=self.device),  # Final coordinates
                     torch.tensor([previous_reward], device=self.device),  # Action reward
                     torch.tensor([is_final_state], device=self.device)  # Episode ended
