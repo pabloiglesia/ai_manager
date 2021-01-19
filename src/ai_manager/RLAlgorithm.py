@@ -618,8 +618,8 @@ class RLAlgorithm:
                     self.current_state.image_raw,  # Final state image
                     torch.tensor([[self.current_state.coordinate_x,
                                    self.current_state.coordinate_y]],
-                                 self.current_state.pick_probability,
                                  device=self.device),  # Final coordinates
+                    self.current_state.pick_probability,
                     torch.tensor([previous_reward], device=self.device),  # Action reward
                     torch.tensor([is_final_state], device=self.device)  # Episode ended
                 ))
