@@ -147,6 +147,7 @@ class RLAlgorithm:
             :param policy_net: DQN object used as policy network for the RL algorithm
             :return:
             """
+            random_action = False
             if self.rl_algorithm.episode_done:  # If the episode has just ended we reset the robot environment
                 self.rl_algorithm.episode_done = False  # Put the variable episode_done back to False
                 self.rl_algorithm.statistics.new_episode()
@@ -156,11 +157,10 @@ class RLAlgorithm:
             else:
                 rate = self.strategy.get_exploration_rate(
                     self.rl_algorithm.statistics.current_step)  # We get the current epsilon value
-                self.rl_algorithm.statistics.new_step()  # Add new steps statistics
 
                 if rate > random.random():  # With a probability = rate we choose a random action (Explore environment)
                     action = random.randrange(self.num_actions)
-                    self.rl_algorithm.statistics.random_action()  # Recolecting statistics
+                    random_action = True
                 else:  # With a probability = (1 - rate) we Explote the information we already have
                     try:
                         with torch.no_grad():  # We calculate the action using the Policy Q Network
@@ -173,7 +173,7 @@ class RLAlgorithm:
                 self.rl_algorithm.current_action = self.rl_algorithm.em.actions[action]
                 self.rl_algorithm.current_action_idx = action
 
-            return self.rl_algorithm.current_action  # We return the action as a string, not as int
+            return self.rl_algorithm.current_action, random_action  # We return the action as a string, not as int
 
     class DQN(nn.Module):
         """
@@ -259,10 +259,11 @@ class RLAlgorithm:
             self.image = None  # Current image ROS message
             self.image_tensor = None  # Current image tensor
 
-            self.image_model = ImageModel(model_name='resnet50')
-            self.model = self.image_model.load_best_model()
-            self.feature_extraction_model = self.image_model.model.load_from_checkpoint(self.image_model.MODEL_CKPT_PATH
-                                                                                        + self.model)
+            self.model_name = 'model-epoch=05-val_loss=0.36-weights7y3_unfreeze2.ckpt'
+            # self.model_name = 'resnet50_freezed.ckpt'
+            self.model_family = 'resnet50'
+            self.image_model = ImageModel(model_name=self.model_family)
+            self.feature_extraction_model = self.image_model.load_model(self.model_name)
             self.image_tensor_size = self.image_model.get_size_features(
                 self.feature_extraction_model)  # Size of the image after performing some transformations
 
@@ -459,38 +460,13 @@ class RLAlgorithm:
         return states, coordinates, actions, rewards, next_states, next_coordinates, is_final_state
 
     @staticmethod
-    def get_average_steps(period, values):
-        values = values[-period:]
-        return sum(values) / len(values)
-
-    def plot(self, average_steps_period=20):
-        int_values = [1 if value else 0 for value in self.statistics.episode_succeed]
-
-        plt.figure(2)
-        plt.clf()
-        plt.title('Training...')
-        plt.xlabel('Episode')
-        plt.ylabel('Duration')
-        plt.plot(int_values)
-
-        success_percentage = self.get_average_steps(average_steps_period, self.statistics.episode_steps)
-        plt.plot(success_percentage)
-        plt.pause(0.001)
-        if is_ipython: display.clear_output(wait=True)
-
-    @staticmethod
     def saving_name(batch_size, gamma, eps_start, eps_end, eps_decay, lr, others=''):
         return 'bs{}_g{}_es{}_ee{}_ed{}_lr_{}_{}.pkl'.format(
             batch_size, gamma, eps_start, eps_end, eps_decay, lr, others
         )
-    def save_training(self, dir='trainings/'):
-        """
-        Method used to save the training so that it can be retaken later. It uses pickle library to do so and stores the
-        whole RLAlgorithm object because all the context is needed to retake the training.
-        This method also stores a pickle a TrainingStatistics object for them to be accessible easily.
-        :param dir: relative directory where we want to store the Algorithm progress
-        :return:
-        """
+
+    def save_training(self, dir='trainings/', others='optimal'):
+
         filename = self.saving_name(self.batch_size, self.gamma, self.eps_start, self.eps_end, self.eps_decay, self.lr,
                                     self.self_training_others)
 
@@ -516,7 +492,9 @@ class RLAlgorithm:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
         rospy.loginfo("Saving Statistics...")
-        filename='{}{}_stats.pkl'.format(dir, filename.split('.pkl')[0])
+        print(filename)
+
+        filename='trainings/{}_stats.pkl'.format(filename.split('.pkl')[0])
         self.statistics.save(filename=filename)
 
         rospy.loginfo("Training saved!")
@@ -524,19 +502,6 @@ class RLAlgorithm:
     @staticmethod
     def recover_training(batch_size=32, gamma=0.999, eps_start=1, eps_end=0.01,
                          eps_decay=0.0005, lr=0.001, others='optimal', dir='trainings/', ):
-        """
-        Method used to recover saved trainings. If it doesn't find a file with the name given, it creates a new
-        RLAlgorithm object.
-        :param batch_size: batch_size RLAlgorithm parameter
-        :param gamma: gamma RLAlgorithm parameter
-        :param eps_start: eps_start RLAlgorithm parameter
-        :param eps_end: eps_end RLAlgorithm parameter
-        :param eps_decay: eps_decay RLAlgorithm parameter
-        :param lr: lr RLAlgorithm parameter
-        :param others: parameter used to modify the name of the progress file
-        :param dir: relative directory where we want to restore the Algorithm progress
-        :return:
-        """
         current_path = os.path.dirname(os.path.realpath(__file__))
         filename = RLAlgorithm.saving_name(batch_size, gamma, eps_start, eps_end, eps_decay, lr, others)
         filename = os.path.join(current_path, dir, filename)
@@ -545,10 +510,10 @@ class RLAlgorithm:
                 rl_algorithm = pickle.load(input)
                 rospy.loginfo("Training recovered. Next step will be step number {}"
                               .format(rl_algorithm.statistics.current_step))
-                rl_algorithm.em.image_model = ImageModel(model_name='resnet50')
 
-                rl_algorithm.em.feature_extraction_model = rl_algorithm.em.image_model.model.load_from_checkpoint(
-                    rl_algorithm.em.image_model.MODEL_CKPT_PATH + rl_algorithm.em.model)
+                rl_algorithm.em.image_model = ImageModel(model_name=rl_algorithm.em.model_family)
+                rl_algorithm.em.feature_extraction_model = rl_algorithm.em.image_model.load_model(
+                    rl_algorithm.em.model_name)
 
                 return rl_algorithm
         except IOError:
@@ -597,6 +562,7 @@ class RLAlgorithm:
         :param object_gripped: Boolean indicating whether or not ann object has been gripped
         :return: action taken
         """
+        self.statistics.new_step()  # Add new steps statistics
         self.previous_state = self.current_state  # Previous state information to store in the Replay Memory
         previous_action = self.current_action  # Previous action to store in the Replay Memory
         previous_action_idx = self.current_action_idx  # Previous action index to store in the Replay Memory
@@ -607,7 +573,7 @@ class RLAlgorithm:
 
         # Calculates previous action reward an establish whether the current state is terminal or not
         previous_reward, is_final_state = self.em.calculate_reward(previous_image)
-        action = self.agent.select_action(self.current_state,
+        action, random_action = self.agent.select_action(self.current_state,
                                           self.policy_net)  # Calculates action
 
         # There are some defined rules that the next action have to accomplish depending on the previous action
@@ -635,8 +601,11 @@ class RLAlgorithm:
             elif action == 'random_state':
                 action_ok = True
             else:
-                action = self.agent.select_action(self.current_state,
+                action, random_action = self.agent.select_action(self.current_state,
                                                   self.policy_net)  # Calculates action
+
+        if random_action:
+            self.statistics.random_action()  # Recolecting statistics
 
 
         # Random_state actions are used just to initialize the environment to a random position, so it is not taken into
